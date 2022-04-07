@@ -1,0 +1,42 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(dplyr)
+```
+
+
+```{r}
+players=read.csv("FIFA.csv")
+colnames(players)
+players_2=players[,c("Position","Crossing", "Finishing","Heading.Accuracy","Short.Passing", "Volleys", "Dribbling", "Curve",              "FK.Accuracy","Long.Passing", "Ball.Control", "Acceleration", "Sprint.Speed","Agility","Reactions","Balance","Shot.Power","Jumping",   "Stamina","Strength","Long.Shots", "Aggression", "Interceptions", "Positioning","Vision","Penalties", "Composure",               "Defensive.Awareness", "Standing.Tackle", "Sliding.Tackle", "GK.Diving", "GK.Handling", "GK.Kicking","GK.Positioning","GK.Reflexes")]
+```
+```{r}
+players_2
+```
+```{r}
+Attack=c("LW", "LF", "RW","RF", "CF", "ST", "CAM")
+Defense=c("RB", "RWB", "LB", "LWB", "CB")
+index_attack=which(players_2$Position %in%(Attack))
+index_attack
+players_2[index_attack, "Position"]="A"
+players_2
+
+index_defense=which(players_2$Position %in%(Defense))
+index_defense
+players_2[index_defense, "Position"]="D"
+players_2=players_2[c(index_attack,index_defense),]
+players_2
+```
+```{r}
+install.packages("keras")
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
