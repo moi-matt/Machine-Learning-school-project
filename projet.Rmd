@@ -38,10 +38,10 @@ Séparation en jeu de données test et validation
 n=length(players_2[,1])
 len.app=as.integer(3*n/4)
 tirage=sample(seq(1,n),len.app, replace=FALSE)
-train=donnee[tirage,]
+train=players_2[tirage,]
 x_train= train[,2:length(train[1,])]
 y_train= train[,1]
-test=donnee[-tirage,]
+test=players_2[-tirage,]
 x_test= test[,2:length(test[1,])]
 y_test= test[,1]
 
@@ -63,3 +63,17 @@ return(model)
 
 ```
 
+## SVM
+
+On considère les données sont non-séparables
+
+```{r}
+library(e1071)
+```
+
+
+```{r}
+svm_player <- train
+svm_player$Position <- as.factor(svm_player$Position)
+mod.svm.lin = svm(Position~.,data=svm_player,kernel="linear",cost=1)
+plot(mod.svm.lin,data = svm_player, Crossing~Finishing)
