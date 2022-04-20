@@ -3,47 +3,74 @@ title: "R Notebook"
 output: html_notebook
 ---
 
-```{r}
+# Projet Apprentissage statistque : Classification des postes des joueurs de fotball
 
-library(dplyr)
-```
+## I. Introduction
 
+Le but de ce projet est de classer le poste des joueurs de football issue du dataset FIFA 2021.
 
 ```{r}
 players=read.csv("FIFA.csv")
 
+```
+Sur ce dataset, chaque joueur possède un ID, son nom, sa nationalité, une note globale, son club et des informations sur son contrat (salaire, fin du contrat), ses caractéristiques physiques (poids, taille, corpulance), sa position. Enfin, les 30 dernières colones concernent les qualités footballistiques du joueur tels que sa qualité de passe, sa vitesse, sa capacité à controler le ballon, sa vision du jeu ou ses qualités défensives. Sur chaque caractéristiqur, le joueur est noté sur 100.
+
+Comme nous cherchons à prédire le poste selon les caractéristiques du joueurs, Les colonnes de ce jeu de données qui nous intéressent sont le poste ou "position"(la variable à expliquer) et les colonnes concernant les caractéristiques du joueurs. 
+
+![Les positions au football](postes_foot.PNG)
+
+Il y a 4 types de positionnement au football : Gardien de but, défenseur, milieu et attaquant.
+Classer les gardiens avec les autres joueurs n'a que peu d'intérêt. Ce poste est à part, les gardiens s'entraînent souvent de manière spécifique et ont un rôle très différent des autres joueurs. On écarte donc les gardiens de l'étude ainsi que les colonnes concernant les caractériqtiques spécifiques des autres joueurs.
+
+On peut voir également qu'il y a des milieux défensifs et offensifs.  Les milieux défensifs vont avoir des qualités proches de celles des défenseurs tandis que les milieux offensifs seront plus proches des attaquants. 
+Ainsi, nous commencerons par tester nos modèles en prenant en compte uniquement les défenseurs et les milieux de terrain.
+
+```{r}
 players_2=players[,c("Position","Crossing", "Finishing","Heading.Accuracy","Short.Passing", "Volleys", "Dribbling", "Curve",              "FK.Accuracy","Long.Passing", "Ball.Control", "Acceleration", "Sprint.Speed","Agility","Reactions","Balance","Shot.Power","Jumping",   "Stamina","Strength","Long.Shots", "Aggression", "Interceptions", "Positioning","Vision","Penalties", "Composure",               "Defensive.Awareness", "Standing.Tackle", "Sliding.Tackle")]
+players_3 = players_2 # Pour la 2e partie
 colnames(players_2)
 ```
 ```{r}
-players_2
+levels(as.factor(players[,"Position"]))
 ```
+
+
+
 ```{r}
-Attack=c("LW", "LF", "RW","RF", "CF", "ST", "CAM")
+Attack=c("LW", "LF", "RW","RF", "CF", "ST")
 Defense=c("RB", "RWB", "LB", "LWB", "CB")
+
 index_attack=which(players_2$Position %in%(Attack))
 index_attack
-players_2[index_attack, "Position"]="A"
-players_2
+players_2[index_attack, "Position"]=1
 
 index_defense=which(players_2$Position %in%(Defense))
 index_defense
-players_2[index_defense, "Position"]="D"
+players_2[index_defense, "Position"]=0
 players_2=players_2[c(index_attack,index_defense),]
-players_2
+```
+```{r}
+#Suppression des Na
+  library(tidyverse)
+drop_na(players_2)
 ```
 
 Séparation en jeu de données test et validation
 ```{r}
 n=length(players_2[,1])
+n
 len.app=as.integer(3*n/4)
+len.app
 tirage=sample(seq(1,n),len.app, replace=FALSE)
 train=players_2[tirage,]
-x_train= train[,2:length(train[1,])]
-y_train= train[,1]
+x_train= as.matrix(train[,2:length(train[1,])])
+y_train= as.numeric(train[,1])
+
 test=players_2[-tirage,]
-x_test= test[,2:length(test[1,])]
-y_test= test[,1]
+
+x_test= as.matrix(test[,2:length(test[1,])])
+y_test= as.numeric(test[,1])
+y_test
 
 ```
 
@@ -51,16 +78,91 @@ y_test= test[,1]
 
 ```{r}
 #install.packages("keras")
+
+library(tensorflow)
+install_tensorflow(version = "nightly")
+library(tensorflow)
+```
+## Modèles que l'on teste :
+```{r}
+library(tensorflow)
 library(keras)
+
+single_perceptron<-function(x_train, activation='sigmoid'){
+    model = keras_model_sequential() 
+    model %>% layer_dense(units=1, activation=activation, input_shape=29)
+return(model)
+}
+two_layers<-function(x_train, activation='sigmoid'){
+    model = keras_model_sequential() 
+    model %>% layer_dense(units=15, activation=activation, input_shape=length(x_train[1,]))
+    model %>% layer_dense(units=1, activation="softmax")
+return(model)
+}
+three_layers<-function(x_train, activation='sigmoid'){
+    model = keras_model_sequential() 
+    model %>% layer_dense(units=30, activation=activation, input_shape=length(x_train[1,]))
+    model %>% layer_dense(units=15, activation=activation)
+    model %>% layer_dense(units=1, activation="softmax")
+return(model)
+}
 ```
 
 ```{r}
-single_perceptron<-function(activation='sigmoid'){
-    model = tf.keras.Sequential()
-    model %>% layers_dense(1, activation=activation, input_shape=(length(x_train[,1],)))
-return(model)
+compile_fit<-function(fun, activation, x=x_train,y=y_train, epochs=30, verbose=0, batch_size=5, validation_split=0.3){
+  model=fun(x,activation)
+  summary(model)
+  model %>% compile(loss="binary_crossentropy",optimizer="adam",metrics='accuracy')
+  history=model%>% fit(x=x_train, y=y_train, epochs=epochs,batch_size=batch_size,validation_split=validation_split, verbose=verbose)
+  
+  return(list(model,history))
 }
 
+
+single1 = compile_fit(single_perceptron, "sigmoid", verbose=2)
+single1[[1]] %>% evaluate(x_test,y_test)
+plot(single1[[2]])
+
+single2 = compile_fit(single_perceptron, "relu", verbose=2)
+single2[[1]] %>% evaluate(x_test,y_test)
+plot(single2[[2]])
+
+single3 = compile_fit(single_perceptron, "softmax")
+single3[[1]] %>% evaluate(x_test,y_test)
+plot(single3[[2]])
+
+```
+```{r}
+two_layers1 = compile_fit(two_layers, "sigmoid", verbose=2)
+two_layers1[[1]] %>% evaluate(x_test,y_test)
+plot(two_layers1[[2]])
+
+two_layers2 = compile_fit(single_perceptron, "reLU")
+two_layers2[[1]] %>% evaluate(x_test,y_test)
+plot(two_layers2[[2]])
+
+two_layers3 = compile_fit(single_perceptron, "softmax")
+two_layers3[[1]] %>% evaluate(x_test,y_test)
+plot(two_layers3[[2]])
+```
+
+
+```{r}
+three_layers1 =
+```
+
+## Prise en compte des milieux de terrain
+
+```{r}
+Midfielder=c("CAM", "CM", "CDM", "LM", "RM")
+index_mid=which(players_2$Position %in%(Midfielder))
+
+players_3[index_mid, "Position"]=1
+
+
+players_3[index_defense, "Position"]=0
+
+players_3=players_3[c(index_attack,index_defense,index_mid),]
 ```
 
 ## SVM
