@@ -165,7 +165,7 @@ players_3[index_defense, "Position"]=0
 players_3=players_3[c(index_attack,index_defense,index_mid),]
 ```
 
-## SVM
+### SVM
 
 On considère les données sont non-séparables
 
@@ -173,9 +173,218 @@ On considère les données sont non-séparables
 library(e1071)
 ```
 
-
 ```{r}
 svm_player <- train
 svm_player$Position <- as.factor(svm_player$Position)
 mod.svm.lin = svm(Position~.,data=svm_player,kernel="linear",cost=1)
 plot(mod.svm.lin,data = svm_player, Crossing~Finishing)
+plot(mod.svm.lin,data = svm_player, Crossing~Dribbling)
+plot(mod.svm.lin,data = svm_player, Crossing~Volleys)
+```
+
+Obviously it's not a separable case.
+
+```{r}
+mod.svm.rad <- svm(Position~.,data=svm_player,kernel="radial",gamma=1,cost=1)
+#plot(mod.svm.rad,data = svm_player, Crossing~Finishing)
+```
+
+**remark**
+
+storing the kernel matrix requires memory that scales quadratically with the number of data points. Training time for traditional SVM algorithms also scales superlinearly with the number of data points. So, svm method is not really feasible for large data sets
+
+```{r}
+tune.out <- tune(svm,Position~.,data=svm_player,kernel="radial",ranges=list(cost=c(0.1,1,10,100,1000),gamma=c(0.5,1,2,3,4)))
+summary(tune.out)
+```
+
+
+```{r}
+library(caret)
+library(kernlab)
+```
+
+```{r}
+C <- c(0.001,0.01,1,10,100,1000)
+sigma <- c(0.1,0.5,1,2,3,4)
+gr <- expand.grid(C=C,sigma=sigma)
+ctrl <- trainControl(method="cv")
+svm_player_omit <- na.omit(svm_player)
+train(Position~.,data=svm_player_omit,method="svmRadial",trControl=ctrl,tuneGrid=gr)
+```
+
+By using the best parameter, we can obtaine the best accuracy equals to 98.78%
+
+gamma = 1/sigma
+
+```{r}
+test$Position <- as.factor(test$Position)
+test1 = na.omit(test)
+prev <- predict(tune.out$best.model,newdata=test1)
+confusionMatrix(data = prev, reference = test1$Position)
+```
+
+```{r}
+mod.final <- svm(Position~.,data=svm_player_omit,kernel="radial",gamma=0.5,cost=10,decision.values=TRUE,probability=TRUE)
+prob <- predict(mod.final,newdata=test1,probability=TRUE,decision.values=TRUE)
+prob1 <- attr(prob,"probabilities")
+```
+
+### Arbre
+
+now we r going to compare with the decision tree:
+
+```{r}
+library(rpart)
+
+tree_train_data <- svm_player_omit
+tree_test_data <- test1
+set.seed(56)
+arbre <- rpart(Position~.,data=tree_train_data,cp=0.0001,minsplit=2,minbucket=1)
+printcp(arbre)
+```
+
+
+```{r}
+cp_opt <- arbre$cptable[which.min(arbre$cptable[,"xerror"]),"CP"]
+arbre1 <- prune(arbre,cp=cp_opt)
+
+prev1 <- predict(arbre1,newdata=tree_test_data,type="class")
+table(true=tree_test_data$Position,pred=prev1)
+```
+
+we gonna plot the two ROC curves and compare the accuracy.
+
+```{r}
+library(plotROC)
+```
+
+```{r}
+library(tidyverse)
+
+Y1 <- as.numeric(test1$Position)-1
+score <- data.frame(svm=prob1[,2],arbre=predict(arbre1,newdata=test1)[,2],Y=Y1)
+df <- gather(score,key="Method",value=score,-Y)
+ggplot(df)+aes(d=Y,m=score,color=Method)+geom_roc()+theme_classic()
+```
+
+apparantly there is no big difference between two models bny comparing the accuracy. Just it has to notice that using decision tree is much faster than svm. 
+
+why decision tree is not computaitionally expensive?
+
+"
+Decision trees algorithms do not compute all possible trees when they fit a tree. If they did they would be solving an NP-hard problem. Decision tree fitting algorithms typically make greedy decisions in the fitting process—at each stage they optimize the sub-problem for finding an optimal split with the data in the given node and the keep moving forward in the fitting process. Also, as you move deeper into the decision tree you have a smaller set of data that has made it to the given node so that you will be optimizing the splitting rule over a smaller subset of data. All of these choices are linear scans of the data in the given node. This is not complicated to do but can become somewhat expensive computationally if you have a large number of observations or a large number of covariates to split on. However, a lot of the work can be split up and sent off to different machines to work on so there are ways to build out your computational architecture to scale up. In general though, the method works fairly quickly on lots of the datasets you see in coursework and in many real world scenarios as well."
+
+## Prise en compte des milieux de terrain
+
+```{r}
+players_2=players[,c("Position","Crossing", "Finishing","Heading.Accuracy","Short.Passing", "Volleys", "Dribbling", "Curve",              "FK.Accuracy","Long.Passing", "Ball.Control", "Acceleration", "Sprint.Speed","Agility","Reactions","Balance","Shot.Power","Jumping",   "Stamina","Strength","Long.Shots", "Aggression", "Interceptions", "Positioning","Vision","Penalties", "Composure",               "Defensive.Awareness", "Standing.Tackle", "Sliding.Tackle")]
+
+Attack=c("LW", "LF", "RW","RF", "CF", "ST", "CAM")
+Defense=c("RB", "RWB", "LB", "LWB", "CB")
+Midfielder=c("CAM", "CM", "CDM", "LM", "RM")
+
+index_attack=which(players_2$Position %in%(Attack))
+index_defense=which(players_2$Position %in%(Defense))
+index_mid=which(players_2$Position %in%(Midfielder))
+
+players_3 <- players_2
+
+players_3[index_attack,"Position"]="A"
+players_3[index_defense, "Position"]="D"
+players_3[index_mid, "Position"]="M"
+
+players_3=players_3[c(index_attack,index_defense,index_mid),]
+
+players_3 <- na.omit(players_3)
+players_3$Position <- as.factor(players_3$Position)
+
+set.seed(1234)
+n=length(players_3[,1])
+len.app=as.integer(3*n/4)
+tirage=sample(seq(1,n),len.app, replace=FALSE)
+train=players_3[tirage,]
+x_train= train[,2:length(train[1,])]
+y_train= train[,1]
+test=players_3[-tirage,]
+x_test= test[,2:length(test[1,])]
+y_test= test[,1]
+```
+
+```{r}
+str(players_3)
+```
+
+### SVM
+
+```{r}
+library(e1071)
+```
+
+```{r}
+model <- svm(Position~.,data=train,kernel="radial",gamma=1,cost=1)
+```
+
+```{r}
+tune.3positions <- tune(svm,Position~.,data=train,kernel="radial",ranges=list(cost=c(0.1,1,10,100,1000),gamma=c(0.5,1,2,3,4)))
+summary(tune.3positions)
+```
+
+
+```{r}
+prev <- predict(tune.3positions$best.model,newdata=test)
+confusionMatrix(data = prev, reference = test$Position)
+```
+
+```{r}
+final.model <- svm(Position~.,data=train,kernel="radial",gamma=0.5,cost=10,decision.values=TRUE,probability=TRUE)
+prob <- predict(final.model,newdata=test,probability=TRUE,decision.values=TRUE)
+prob1 <- attr(prob,"probabilities")
+```
+
+### Arbre de décision
+
+```{r}
+library(rpart)
+
+tree_train_data <- train
+tree_test_data <- test
+set.seed(56)
+arbre <- rpart(Position~.,data=tree_train_data,cp=0.0001,minsplit=2,minbucket=1)
+printcp(arbre)
+```
+
+```{r}
+cp_opt <- arbre$cptable[which.min(arbre$cptable[,"xerror"]),"CP"]
+arbre1 <- prune(arbre,cp=cp_opt)
+
+prev1 <- predict(arbre1,newdata=tree_test_data,type="class")
+table(true=tree_test_data$Position,pred=prev1)
+```
+
+```{r}
+#plot(arbre1)
+```
+
+```{r}
+library(pROC)
+```
+
+```{r}
+score_svm <- prob1[,3]
+score_arbre <- predict(arbre1,newdata=test)[,3]
+a <- roc(test$Position,as.numeric(score_svm))
+b <- roc(test$Position,as.numeric(score_arbre),col="red")
+plot(a)
+plot(b,add=TRUE,col="red")
+```
+
+```{r}
+auc(a)
+```
+```{r}
+auc(b)
+```
+
+
+
