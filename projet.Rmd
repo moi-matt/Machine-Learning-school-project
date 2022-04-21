@@ -167,37 +167,27 @@ players_3=players_3[c(index_attack,index_defense,index_mid),]
 
 ### SVM
 
-On considère les données sont non-séparables
+```{r}
+library(tidyverse)
+```
+
+## SVM
+
+On considère prmièrement les données sont non-séparables
 
 ```{r}
 library(e1071)
 ```
 
+
 ```{r}
 svm_player <- train
 svm_player$Position <- as.factor(svm_player$Position)
-mod.svm.lin = svm(Position~.,data=svm_player,kernel="linear",cost=1)
-plot(mod.svm.lin,data = svm_player, Crossing~Finishing)
-plot(mod.svm.lin,data = svm_player, Crossing~Dribbling)
-plot(mod.svm.lin,data = svm_player, Crossing~Volleys)
+#mod.svm.lin = svm(Position~.,data=svm_player,kernel="linear",cost=1)
+#plot(mod.svm.lin,data = svm_player, Crossing~Finishing)
+#plot(mod.svm.lin,data = svm_player, Crossing~Dribbling)
+#plot(mod.svm.lin,data = svm_player, Crossing~Volleys)
 ```
-
-Obviously it's not a separable case.
-
-```{r}
-mod.svm.rad <- svm(Position~.,data=svm_player,kernel="radial",gamma=1,cost=1)
-#plot(mod.svm.rad,data = svm_player, Crossing~Finishing)
-```
-
-**remark**
-
-storing the kernel matrix requires memory that scales quadratically with the number of data points. Training time for traditional SVM algorithms also scales superlinearly with the number of data points. So, svm method is not really feasible for large data sets
-
-```{r}
-tune.out <- tune(svm,Position~.,data=svm_player,kernel="radial",ranges=list(cost=c(0.1,1,10,100,1000),gamma=c(0.5,1,2,3,4)))
-summary(tune.out)
-```
-
 
 ```{r}
 library(caret)
@@ -205,17 +195,62 @@ library(kernlab)
 ```
 
 ```{r}
+svm_player_omit <- na.omit(svm_player)
+```
+
+```{r}
+C <- c(0.001,0.01,1,10,100,1000)
+gr.lin <- expand.grid(C=C)
+ctrl <- trainControl(method="cv")
+train.mod.lin <- train(Position~.,data=svm_player_omit,method="svmLinear",trControl=ctrl,tuneGrid=gr.lin)
+```
+
+```{r}
+train.mod.lin
+```
+
+```{r}
+plot(train.mod.lin, metric = "Accuracy",xTrans=log10,main = "linear svm with criterion accuracy")
+plot(train.mod.lin, metric = "Kappa",xTrans=log10,main = "linear svm with criterion kappa")
+```
+
+```{r}
+#mod.svm.rad <- svm(Position~.,data=svm_player,kernel="radial",gamma=1,cost=1)
+#plot(mod.svm.rad,data = svm_player, Crossing~Finishing)
+```
+
+**remark**
+
+storing the kernel matrix requires memory that scales quadratically with the number of data points. Training time for traditional SVM algorithms also scales superlinearly with the number of data points. So, svm method is not really feasible for large data sets
+
+
+```{r}
 C <- c(0.001,0.01,1,10,100,1000)
 sigma <- c(0.1,0.5,1,2,3,4)
 gr <- expand.grid(C=C,sigma=sigma)
 ctrl <- trainControl(method="cv")
-svm_player_omit <- na.omit(svm_player)
-train(Position~.,data=svm_player_omit,method="svmRadial",trControl=ctrl,tuneGrid=gr)
+train.mod.rad <- train(Position~.,data=svm_player_omit,method="svmRadial",trControl=ctrl,tuneGrid=gr)
 ```
 
-By using the best parameter, we can obtaine the best accuracy equals to 98.78%
+it has to notice that the running time of the radial method is much longer than the basic linear svm method
 
-gamma = 1/sigma
+```{r}
+train.mod.rad
+```
+
+```{r}
+plot(train.mod.rad, metric = "Accuracy",xTrans=log10,main = "radial svm with criterion accuracy")
+plot(train.mod.rad, metric = "Kappa",xTrans=log10,main = "radial svm with criterion kappa")
+```
+
+But we have risk that the R session be explosed, than we try to find a more classical way to apply the traing process.
+
+```{r}
+tune.out <- tune(svm,Position~.,data=svm_player,kernel="radial",ranges=list(cost=c(0.1,1,10,100,1000),gamma=c(0.5,1,2,3,4)))
+summary(tune.out)
+```
+
+(gamma = 1/sigma)
 
 ```{r}
 test$Position <- as.factor(test$Position)
@@ -229,8 +264,6 @@ mod.final <- svm(Position~.,data=svm_player_omit,kernel="radial",gamma=0.5,cost=
 prob <- predict(mod.final,newdata=test1,probability=TRUE,decision.values=TRUE)
 prob1 <- attr(prob,"probabilities")
 ```
-
-### Arbre
 
 now we r going to compare with the decision tree:
 
@@ -253,6 +286,32 @@ prev1 <- predict(arbre1,newdata=tree_test_data,type="class")
 table(true=tree_test_data$Position,pred=prev1)
 ```
 
+
+```{r}
+gr = expand.grid(cp=c(10^-(5:0)))
+ctrl <- trainControl(method="cv")
+train.mod.tree = train(Position ~ ., 
+                data = tree_train_data, 
+                method = "rpart", 
+                trControl = ctrl,
+                tuneGrid = gr)
+```
+
+```{r}
+train.mod.tree
+```
+
+```{r}
+plot(train.mod.tree, metric = "Accuracy", xTrans = log10, xlab = "log10 Cp", main = "Binary tree (Accuracy criterion)")
+plot(train.mod.tree, metric = "Kappa", xTrans = log10, xlab = "log10 Cp", main = "Binary tree (Kappa criterion)")
+```
+
+```{r}
+library(rpart.plot)
+prp(train.mod.tree$finalModel, main = "Best binary tree")
+```
+
+
 we gonna plot the two ROC curves and compare the accuracy.
 
 ```{r}
@@ -260,8 +319,6 @@ library(plotROC)
 ```
 
 ```{r}
-library(tidyverse)
-
 Y1 <- as.numeric(test1$Position)-1
 score <- data.frame(svm=prob1[,2],arbre=predict(arbre1,newdata=test1)[,2],Y=Y1)
 df <- gather(score,key="Method",value=score,-Y)
@@ -360,10 +417,6 @@ arbre1 <- prune(arbre,cp=cp_opt)
 
 prev1 <- predict(arbre1,newdata=tree_test_data,type="class")
 table(true=tree_test_data$Position,pred=prev1)
-```
-
-```{r}
-#plot(arbre1)
 ```
 
 ```{r}
