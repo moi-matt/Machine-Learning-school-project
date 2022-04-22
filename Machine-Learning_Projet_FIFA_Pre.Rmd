@@ -1,0 +1,118 @@
+---
+title: "Machine Learning Project FIFA Presentation"
+author: Tom Protin & Matthieu Roux & Liao Yonghan
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+#load your local directory
+load("D:/Study/INSA/S8/Statistical Learnig/Projet/.RData")
+#import packages if we wanted to run the r code in slides
+library(caret)
+library(kernlab)
+library(dplyr)
+library(tidyverse)
+library(e1071)
+library(rpart)
+library(rpart.plot)
+library(plotROC)
+```
+
+
+## Summary
+
+- Base de données
+- Modèles utilisés
+- Comparaison 
+- Conclusion
+
+## Présentation de base de données
+
+```{r , echo = TRUE}
+players_2
+```
+
+## Linear SVM
+
+```{r}
+train.mod.lin
+```
+
+## Accuracy of linear svm
+
+```{r}
+plot(train.mod.lin, metric = "Accuracy",xTrans=log10,main = "linear svm with criterion accuracy")
+plot(train.mod.lin, metric = "Kappa",xTrans=log10,main = "linear svm with criterion kappa")
+```
+
+## Remark
+
+Storing the kernel matrix requires memory that scales quadratically with the number of data points. Training time for traditional SVM algorithms also scales superlinearly with the number of data points. So, svm method is not really feasible for large data sets. 
+
+## Radial SVM
+
+```{r}
+train.mod.rad
+```
+
+## Accuracy of radial svm
+
+```{r}
+plot(train.mod.rad, metric = "Accuracy",xTrans=log10,main = "radial svm with criterion accuracy")
+plot(train.mod.rad, metric = "Kappa",xTrans=log10,main = "radial svm with criterion kappa")
+```
+
+## Prediction of linear svm 
+
+```{r}
+confusionMatrix(data = prev, reference = test1$Position)
+```
+
+## Decision Tree
+
+```{r}
+train.mod.tree
+```
+
+## Precision of the decision tree
+
+```{r}
+plot(train.mod.tree, metric = "Accuracy", xTrans = log10, xlab = "log10 Cp", main = "Binary tree (Accuracy criterion)")
+plot(train.mod.tree, metric = "Kappa", xTrans = log10, xlab = "log10 Cp", main = "Binary tree (Kappa criterion)")
+```
+
+## The best tree
+
+```{r}
+prp(train.mod.tree$finalModel, main = "Best binary tree")
+```
+
+
+## Predicion of the decision tree
+
+```{r}
+table(true=tree_test_data$Position,pred=prev1)
+```
+
+
+## Comparasion between the svm and decision tree
+
+```{r}
+ggplot(df)+aes(d=Y,m=score,color=Method)+geom_roc()+theme_classic()
+```
+
+## Conclusion of these two algorithms
+
+apparantly there is no big difference between two models bny comparing the accuracy. Just it has to notice that using decision tree is much faster than svm. 
+
+why decision tree is not computaitionally expensive?
+
+"
+Decision trees algorithms do not compute all possible trees when they fit a tree. If they did they would be solving an NP-hard problem. Decision tree fitting algorithms typically make greedy decisions in the fitting process—at each stage they optimize the sub-problem for finding an optimal split with the data in the given node and the keep moving forward in the fitting process. Also, as you move deeper into the decision tree you have a smaller set of data that has made it to the given node so that you will be optimizing the splitting rule over a smaller subset of data. All of these choices are linear scans of the data in the given node. This is not complicated to do but can become somewhat expensive computationally if you have a large number of observations or a large number of covariates to split on. However, a lot of the work can be split up and sent off to different machines to work on so there are ways to build out your computational architecture to scale up. In general though, the method works fairly quickly on lots of the datasets you see in coursework and in many real world scenarios as well."
+
+
+
+
+
+
