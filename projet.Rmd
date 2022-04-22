@@ -11,11 +11,12 @@ Le but de ce projet est de classer le poste des joueurs de football issue du dat
 
 ```{r}
 players=read.csv("FIFA.csv")
-
+head(players)
 ```
-Sur ce dataset, chaque joueur possède un ID, son nom, sa nationalité, une note globale, son club et des informations sur son contrat (salaire, fin du contrat), ses caractéristiques physiques (poids, taille, corpulance), sa position. Enfin, les 30 dernières colones concernent les qualités footballistiques du joueur tels que sa qualité de passe, sa vitesse, sa capacité à controler le ballon, sa vision du jeu ou ses qualités défensives. Sur chaque caractéristiqur, le joueur est noté sur 100.
 
-Comme nous cherchons à prédire le poste selon les caractéristiques du joueurs, Les colonnes de ce jeu de données qui nous intéressent sont le poste ou "position"(la variable à expliquer) et les colonnes concernant les caractéristiques du joueurs. 
+Sur ce dataset, chaque joueur possède un ID, son nom, sa nationalité, une note globale, son club et des informations sur son contrat (salaire, fin du contrat), ses caractéristiques physiques (poids, taille, corpulance), sa position. Enfin, les 30 dernières colones concernent les qualités footballistiques du joueur tels que sa qualité de passe, sa vitesse, sa capacité à controler le ballon, sa vision du jeu ou ses qualités défensives. Sur chaque caractéristique, le joueur est noté sur 100.
+
+Comme nous cherchons à prédire le poste selon les caractéristiques du joueurs, Les colonnes de ce jeu de données qui nous intéressent sont le poste ou "position" (la variable à expliquer) et les colonnes concernant les caractéristiques du joueurs. 
 
 ![Les positions au football](postes_foot.PNG)
 
@@ -23,32 +24,32 @@ Il y a 4 types de positionnement au football : Gardien de but, défenseur, milie
 Classer les gardiens avec les autres joueurs n'a que peu d'intérêt. Ce poste est à part, les gardiens s'entraînent souvent de manière spécifique et ont un rôle très différent des autres joueurs. On écarte donc les gardiens de l'étude ainsi que les colonnes concernant les caractériqtiques spécifiques des autres joueurs.
 
 On peut voir également qu'il y a des milieux défensifs et offensifs.  Les milieux défensifs vont avoir des qualités proches de celles des défenseurs tandis que les milieux offensifs seront plus proches des attaquants. 
-Ainsi, nous commencerons par tester nos modèles en prenant en compte uniquement les défenseurs et les milieux de terrain.
+Ainsi, afin d'éviter que nos modèles ne soient faussés par cette spécificités du football, nous supprimerons les milieux de l'étude et chercherons simplement à classer les joueurs entre "attaquant" et "défenseur"
 
 ```{r}
-players_2=players[,c("Position","Crossing", "Finishing","Heading.Accuracy","Short.Passing", "Volleys", "Dribbling", "Curve",              "FK.Accuracy","Long.Passing", "Ball.Control", "Acceleration", "Sprint.Speed","Agility","Reactions","Balance","Shot.Power","Jumping",   "Stamina","Strength","Long.Shots", "Aggression", "Interceptions", "Positioning","Vision","Penalties", "Composure",               "Defensive.Awareness", "Standing.Tackle", "Sliding.Tackle")]
-players_3 = players_2 # Pour la 2e partie
+players_2=players[,c("Position","Crossing", "Finishing","Heading.Accuracy","Short.Passing", "Volleys", "Dribbling", "Curve", "FK.Accuracy","Long.Passing", "Ball.Control", "Acceleration", "Sprint.Speed","Agility","Reactions","Balance","Shot.Power","Jumping", "Stamina","Strength","Long.Shots", "Aggression", "Interceptions", "Positioning","Vision","Penalties", "Composure","Defensive.Awareness", "Standing.Tackle", "Sliding.Tackle")]
 colnames(players_2)
 ```
+
 ```{r}
-levels(as.factor(players[,"Position"]))
+players_2
 ```
 
-
-
 ```{r}
-Attack=c("LW", "LF", "RW","RF", "CF", "ST")
+Attack=c("LW", "LF", "RW","RF", "CF", "ST", "CAM")
 Defense=c("RB", "RWB", "LB", "LWB", "CB")
-
 index_attack=which(players_2$Position %in%(Attack))
 index_attack
 players_2[index_attack, "Position"]=1
+players_2
 
 index_defense=which(players_2$Position %in%(Defense))
 index_defense
 players_2[index_defense, "Position"]=0
 players_2=players_2[c(index_attack,index_defense),]
+players_2
 ```
+
 ```{r}
 #Suppression des Na
   library(tidyverse)
@@ -83,7 +84,9 @@ library(tensorflow)
 install_tensorflow(version = "nightly")
 library(tensorflow)
 ```
+
 ## Modèles que l'on teste :
+
 ```{r}
 library(tensorflow)
 library(keras)
@@ -132,6 +135,7 @@ single3[[1]] %>% evaluate(x_test,y_test)
 plot(single3[[2]])
 
 ```
+
 ```{r}
 two_layers1 = compile_fit(two_layers, "sigmoid", verbose=2)
 two_layers1[[1]] %>% evaluate(x_test,y_test)
@@ -147,297 +151,137 @@ plot(two_layers3[[2]])
 ```
 
 
-```{r}
-three_layers1 =
-```
-
-## Prise en compte des milieux de terrain
-
-```{r}
-Midfielder=c("CAM", "CM", "CDM", "LM", "RM")
-index_mid=which(players_2$Position %in%(Midfielder))
-
-players_3[index_mid, "Position"]=1
 
 
-players_3[index_defense, "Position"]=0
 
-players_3=players_3[c(index_attack,index_defense,index_mid),]
-```
-
-### SVM
-
-```{r}
-library(tidyverse)
-```
-
-## SVM
-
-On considère prmièrement les données sont non-séparables
-
-```{r}
-library(e1071)
-```
-
-
-```{r}
-svm_player <- train
-svm_player$Position <- as.factor(svm_player$Position)
-#mod.svm.lin = svm(Position~.,data=svm_player,kernel="linear",cost=1)
-#plot(mod.svm.lin,data = svm_player, Crossing~Finishing)
-#plot(mod.svm.lin,data = svm_player, Crossing~Dribbling)
-#plot(mod.svm.lin,data = svm_player, Crossing~Volleys)
-```
-
-```{r}
-library(caret)
+```{r message=FALSE, warning=FALSE}
 library(kernlab)
+data(spam)
+spamX <- as.matrix(spam[,-58])
+#spamY <- to_categorical(as.numeric(spam$type)-1, 2)
+spamY <- as.numeric(spam$type)-1
 ```
 
-```{r}
-svm_player_omit <- na.omit(svm_player)
-```
-
-```{r}
-C <- c(0.001,0.01,1,10,100,1000)
-gr.lin <- expand.grid(C=C)
-ctrl <- trainControl(method="cv")
-train.mod.lin <- train(Position~.,data=svm_player_omit,method="svmLinear",trControl=ctrl,tuneGrid=gr.lin)
-```
-
-```{r}
-train.mod.lin
-```
-
-```{r}
-plot(train.mod.lin, metric = "Accuracy",xTrans=log10,main = "linear svm with criterion accuracy")
-plot(train.mod.lin, metric = "Kappa",xTrans=log10,main = "linear svm with criterion kappa")
-```
-
-```{r}
-#mod.svm.rad <- svm(Position~.,data=svm_player,kernel="radial",gamma=1,cost=1)
-#plot(mod.svm.rad,data = svm_player, Crossing~Finishing)
-```
-
-**remark**
-
-storing the kernel matrix requires memory that scales quadratically with the number of data points. Training time for traditional SVM algorithms also scales superlinearly with the number of data points. So, svm method is not really feasible for large data sets
 
 
 ```{r}
-C <- c(0.001,0.01,1,10,100,1000)
-sigma <- c(0.1,0.5,1,2,3,4)
-gr <- expand.grid(C=C,sigma=sigma)
-ctrl <- trainControl(method="cv")
-train.mod.rad <- train(Position~.,data=svm_player_omit,method="svmRadial",trControl=ctrl,tuneGrid=gr)
+set.seed(5678)
+perm <- sample(4601,3000)
+appX <- spamX[perm,]
+appX
+appY <- spamY[perm]
+validX <- spamX[-perm,]
+validY <- spamY[-perm]
 ```
 
-it has to notice that the running time of the radial method is much longer than the basic linear svm method
+1. Using train data, train a simple perceptron with an activation function  **sigmoïde**. We use 30 epochs and  batchs of size 5.
 
+
+We define first the structure of the nework, 1 layer with 1 neuron :
 ```{r}
-train.mod.rad
-```
-
-```{r}
-plot(train.mod.rad, metric = "Accuracy",xTrans=log10,main = "radial svm with criterion accuracy")
-plot(train.mod.rad, metric = "Kappa",xTrans=log10,main = "radial svm with criterion kappa")
-```
-
-But we have risk that the R session be explosed, than we try to find a more classical way to apply the traing process.
-
-```{r}
-tune.out <- tune(svm,Position~.,data=svm_player,kernel="radial",ranges=list(cost=c(0.1,1,10,100,1000),gamma=c(0.5,1,2,3,4)))
-summary(tune.out)
-```
-
-(gamma = 1/sigma)
-
-```{r}
-test$Position <- as.factor(test$Position)
-test1 = na.omit(test)
-prev <- predict(tune.out$best.model,newdata=test1)
-confusionMatrix(data = prev, reference = test1$Position)
+percep.sig <- keras_model_sequential() 
+percep.sig %>% layer_dense(units=1,input_shape = 57,activation="sigmoid")
 ```
 
 ```{r}
-mod.final <- svm(Position~.,data=svm_player_omit,kernel="radial",gamma=0.5,cost=10,decision.values=TRUE,probability=TRUE)
-prob <- predict(mod.final,newdata=test1,probability=TRUE,decision.values=TRUE)
-prob1 <- attr(prob,"probabilities")
+summary(percep.sig)
 ```
 
-now we r going to compare with the decision tree:
+We choose then the loss function, the optimisation algorithm and a  critèrium to measure the performance:
 
 ```{r}
-library(rpart)
+percep.sig %>% compile(
+  loss="binary_crossentropy",
+  optimizer="adam",
+  metrics="accuracy"
+)
+```
 
-tree_train_data <- svm_player_omit
-tree_test_data <- test1
-set.seed(56)
-arbre <- rpart(Position~.,data=tree_train_data,cp=0.0001,minsplit=2,minbucket=1)
-printcp(arbre)
+We then **fit** the parameters (batchs size, epochs number...)
+
+```{r message=FALSE, warning=FALSE}
+p.sig <- percep.sig %>% fit(
+  x=appX,
+  y=appY,
+  epochs=30,
+  batch_size=5,
+  validation_split=0.2,
+  verbose=2
+)
+p.sig
+```
+
+The function **plot** helps to visualize la perte et pa performance en fonction du nombre d'epochs :
+
+```{r}
+plot(p.sig)
+```
+
+# Régression logistique Ridge et Lasso
+
+```{r}
+train$Position = as.factor(train$Position)
+```
+
+```{r}
+temp = is.na(apply(train[,2:length(colnames(train))],1,sum))
+nRemovedTrain = sum(1*temp)
+train2 = train[!temp,]
+summary(train2)
 ```
 
 
 ```{r}
-cp_opt <- arbre$cptable[which.min(arbre$cptable[,"xerror"]),"CP"]
-arbre1 <- prune(arbre,cp=cp_opt)
-
-prev1 <- predict(arbre1,newdata=tree_test_data,type="class")
-table(true=tree_test_data$Position,pred=prev1)
+temp = is.na(apply(test[,2:length(colnames(test))],1,sum))
+nRemovedTest = sum(1*temp)
+test2 = test[!temp,]
+summary(test2)
 ```
 
 
 ```{r}
-gr = expand.grid(cp=c(10^-(5:0)))
-ctrl <- trainControl(method="cv")
-train.mod.tree = train(Position ~ ., 
-                data = tree_train_data, 
-                method = "rpart", 
-                trControl = ctrl,
-                tuneGrid = gr)
-```
-
-```{r}
-train.mod.tree
-```
-
-```{r}
-plot(train.mod.tree, metric = "Accuracy", xTrans = log10, xlab = "log10 Cp", main = "Binary tree (Accuracy criterion)")
-plot(train.mod.tree, metric = "Kappa", xTrans = log10, xlab = "log10 Cp", main = "Binary tree (Kappa criterion)")
-```
-
-```{r}
-library(rpart.plot)
-prp(train.mod.tree$finalModel, main = "Best binary tree")
-```
-
-
-we gonna plot the two ROC curves and compare the accuracy.
-
-```{r}
-library(plotROC)
-```
-
-```{r}
-Y1 <- as.numeric(test1$Position)-1
-score <- data.frame(svm=prob1[,2],arbre=predict(arbre1,newdata=test1)[,2],Y=Y1)
-df <- gather(score,key="Method",value=score,-Y)
-ggplot(df)+aes(d=Y,m=score,color=Method)+geom_roc()+theme_classic()
-```
-
-apparantly there is no big difference between two models bny comparing the accuracy. Just it has to notice that using decision tree is much faster than svm. 
-
-why decision tree is not computaitionally expensive?
-
-"
-Decision trees algorithms do not compute all possible trees when they fit a tree. If they did they would be solving an NP-hard problem. Decision tree fitting algorithms typically make greedy decisions in the fitting process—at each stage they optimize the sub-problem for finding an optimal split with the data in the given node and the keep moving forward in the fitting process. Also, as you move deeper into the decision tree you have a smaller set of data that has made it to the given node so that you will be optimizing the splitting rule over a smaller subset of data. All of these choices are linear scans of the data in the given node. This is not complicated to do but can become somewhat expensive computationally if you have a large number of observations or a large number of covariates to split on. However, a lot of the work can be split up and sent off to different machines to work on so there are ways to build out your computational architecture to scale up. In general though, the method works fairly quickly on lots of the datasets you see in coursework and in many real world scenarios as well."
-
-## Prise en compte des milieux de terrain
-
-```{r}
-players_2=players[,c("Position","Crossing", "Finishing","Heading.Accuracy","Short.Passing", "Volleys", "Dribbling", "Curve",              "FK.Accuracy","Long.Passing", "Ball.Control", "Acceleration", "Sprint.Speed","Agility","Reactions","Balance","Shot.Power","Jumping",   "Stamina","Strength","Long.Shots", "Aggression", "Interceptions", "Positioning","Vision","Penalties", "Composure",               "Defensive.Awareness", "Standing.Tackle", "Sliding.Tackle")]
-
-Attack=c("LW", "LF", "RW","RF", "CF", "ST", "CAM")
-Defense=c("RB", "RWB", "LB", "LWB", "CB")
-Midfielder=c("CAM", "CM", "CDM", "LM", "RM")
-
-index_attack=which(players_2$Position %in%(Attack))
-index_defense=which(players_2$Position %in%(Defense))
-index_mid=which(players_2$Position %in%(Midfielder))
-
-players_3 <- players_2
-
-players_3[index_attack,"Position"]="A"
-players_3[index_defense, "Position"]="D"
-players_3[index_mid, "Position"]="M"
-
-players_3=players_3[c(index_attack,index_defense,index_mid),]
-
-players_3 <- na.omit(players_3)
-players_3$Position <- as.factor(players_3$Position)
-
-set.seed(1234)
-n=length(players_3[,1])
-len.app=as.integer(3*n/4)
-tirage=sample(seq(1,n),len.app, replace=FALSE)
-train=players_3[tirage,]
-x_train= train[,2:length(train[1,])]
-y_train= train[,1]
-test=players_3[-tirage,]
-x_test= test[,2:length(test[1,])]
-y_test= test[,1]
-```
-
-```{r}
-str(players_3)
-```
-
-### SVM
-
-```{r}
-library(e1071)
-```
-
-```{r}
-model <- svm(Position~.,data=train,kernel="radial",gamma=1,cost=1)
-```
-
-```{r}
-tune.3positions <- tune(svm,Position~.,data=train,kernel="radial",ranges=list(cost=c(0.1,1,10,100,1000),gamma=c(0.5,1,2,3,4)))
-summary(tune.3positions)
+modeleRegLog = glm(Position ~ ., data = train2, family = binomial)
+summary(modeleRegLog)
 ```
 
 
 ```{r}
-prev <- predict(tune.3positions$best.model,newdata=test)
-confusionMatrix(data = prev, reference = test$Position)
+modeleRegLogCorr = step(modeleRegLog, direction = "both")
 ```
 
 ```{r}
-final.model <- svm(Position~.,data=train,kernel="radial",gamma=0.5,cost=10,decision.values=TRUE,probability=TRUE)
-prob <- predict(final.model,newdata=test,probability=TRUE,decision.values=TRUE)
-prob1 <- attr(prob,"probabilities")
-```
-
-### Arbre de décision
-
-```{r}
-library(rpart)
-
-tree_train_data <- train
-tree_test_data <- test
-set.seed(56)
-arbre <- rpart(Position~.,data=tree_train_data,cp=0.0001,minsplit=2,minbucket=1)
-printcp(arbre)
+summary(modeleRegLogCorr)
+residus = modeleRegLogCorr$residuals
+fittedValuesTrain = round(modeleRegLogCorr$fitted.values)
+results = summary(as.factor((as.double(train2$Position)-1-round(modeleRegLogCorr$fitted.values))^2))
+resultats = results[1]/(sum(results))*100
+resultats
+#fittedValuesTrain
 ```
 
 ```{r}
-cp_opt <- arbre$cptable[which.min(arbre$cptable[,"xerror"]),"CP"]
-arbre1 <- prune(arbre,cp=cp_opt)
-
-prev1 <- predict(arbre1,newdata=tree_test_data,type="class")
-table(true=tree_test_data$Position,pred=prev1)
+prediction = round(predict.glm(modeleRegLogCorr, newdata = test2, type = "response"))
+resultsTest = summary(as.factor((as.double(test2$Position)-prediction)^2))
+tauxErreur = resultsTest[1]/(sum(resultsTest))*100
+resultsTest
+tauxErreur
 ```
 
-```{r}
-library(pROC)
-```
 
-```{r}
-score_svm <- prob1[,3]
-score_arbre <- predict(arbre1,newdata=test)[,3]
-a <- roc(test$Position,as.numeric(score_svm))
-b <- roc(test$Position,as.numeric(score_arbre),col="red")
-plot(a)
-plot(b,add=TRUE,col="red")
-```
 
-```{r}
-auc(a)
-```
-```{r}
-auc(b)
-```
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
