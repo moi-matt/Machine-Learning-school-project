@@ -246,7 +246,7 @@ summary(modeleRegLog)
 
 
 ```{r}
-modeleRegLogCorr = step(modeleRegLog, direction = "both")
+modeleRegLogCorr = step(modeleRegLog, direction = "both", k = log(n))
 ```
 
 ```{r}
@@ -267,10 +267,199 @@ resultsTest
 tauxErreur
 ```
 
+## Prise en compte des milieux de terrain
+
+```{r}
+Midfielder=c("CAM", "CM", "CDM", "LM", "RM")
+Attack=c("LW", "LF", "RW","RF", "CF", "ST")
+Defense=c("RB", "RWB", "LB", "LWB", "CB")
+index_mid=which(players$Position %in%(Midfielder))
+
+players_3=players[,c("Position","Crossing", "Finishing","Heading.Accuracy","Short.Passing", "Volleys", "Dribbling", "Curve", "FK.Accuracy","Long.Passing", "Ball.Control", "Acceleration", "Sprint.Speed","Agility","Reactions","Balance","Shot.Power","Jumping", "Stamina","Strength","Long.Shots", "Aggression", "Interceptions", "Positioning","Vision","Penalties", "Composure","Defensive.Awareness", "Standing.Tackle", "Sliding.Tackle")]
+
+players_3[index_mid, "Position"]=1
+
+players_3[index_defense, "Position"]=0
+
+players_3[index_attack, "Position"]=2
+
+players_3=players_3[c(index_attack,index_defense,index_mid),]
+players_3$Position = as.factor(players_3$Position)
+
+temp = is.na(apply(players_3[,2:length(colnames(train))],1,sum))
+nRemovedTrain = sum(1*temp)
+players_3 = players_3[!temp,]
+summary(players_3)
+```
+
+Création de l'ensemble défense et de l'ensemble attaque
+
+```{r}
+players_3_def = players_3
+players_3_def$Position[which(players_3_def$Position=='2')] = '1'
+players_3_def$Position = as.integer(players_3_def$Position)
+players_3_def$Position = as.factor(players_3_def$Position)
+summary(players_3_def$Position)
+
+players_3_att = players_3
+players_3_att$Position[which(players_3_att$Position=='1')] = '0'
+players_3_att$Position[which(players_3_att$Position=='2')] = '1'
+players_3_att$Position = as.integer(players_3_att$Position)
+players_3_att$Position = as.factor(players_3_att$Position)
+summary(players_3_att$Position)
+summary(players_3$Position)
+```
+
+
+
+Création des ensemble d'entraînement et de test pour def
+
+```{r}
+n=length(players_3_def[,1])
+n
+len.app=as.integer(3*n/4)
+len.app
+tirage=sample(seq(1,n),len.app, replace=FALSE)
+train_def=players_3_def[tirage,]
+x_train_def= as.matrix(train_def[,2:length(train_def[1,])])
+y_train_def= train_def$Position
+
+test_def=players_3_def[-tirage,]
+
+x_test_def= as.matrix(test_def[,2:length(test_def[1,])])
+y_test_def= (test_def[,1])
+```
+
+Création des ensemble d'entraînement et de test pour att
+
+```{r}
+train_att=players_3_att[tirage,]
+x_train_att= as.matrix(train_att[,2:length(train_att[1,])])
+y_train_att= train_att$Position
+
+test_att=players_3_att[-tirage,]
+
+x_test_att= as.matrix(test_att[,2:length(test_att[1,])])
+y_test_att= (test_att[,1])
+```
+
+
+Création du modèle pour def :
+
+```{r}
+mod_def = glm(Position ~ ., data = train_def, family = binomial)
+summary(mod_def)
+```
+
+```{r include=FALSE}
+mod_def = step(mod_def, direction = "both", k = log(n))
+```
+
+
+```{r}
+summary(mod_def)
+```
+
+Vérification des performances :
+
+```{r}
+pred_def = predict.glm(mod_def, newdata = test_def, type = "response")
+pred_def = round(pred_def)
+
+ratio = summary(as.factor((pred_def - (as.integer(y_test_def)-1))^2))
+ratio = ratio[1]/(sum(ratio))
+
+pred_def = as.factor(pred_def)
+summary(pred_def)
+summary(y_test_def)
+ratio
+```
+Création du modèle pour att :
+
+```{r}
+mod_att = glm(Position ~ ., data = train_att, family = binomial)
+summary(mod_att)
+```
+
+```{r include=FALSE}
+mod_att = step(mod_att, direction = "both", k = log(n))
+```
+
+
+```{r}
+summary(mod_att)
+```
+
+Vérification des performances :
+
+```{r}
+pred_att = predict.glm(mod_att, newdata = test_att, type = "response")
+pred_att = round(pred_att)
+
+ratio2 = summary(as.factor((pred_att - (as.integer(y_test_att)-1))^2))
+ratio2 = ratio2[1]/(sum(ratio2))
+
+pred_att = as.factor(pred_att)
+summary(pred_att)
+summary(y_test_att)
+ratio2
+```
+
+Assemblage des prédictions pour reconstruire la prédiction finale incluant défenseur, attanquant, et milieu de terrain :
+
+```{r}
+pred_def = as.matrix(pred_def)
+pred_att = as.matrix(pred_att)
+tempo = cbind(pred_att, pred_def)
+pred_finale = as.integer(pred_def)-1
+summary(as.factor(pred_finale))
+pred_finale[which(pred_def=='1' && pred_att=='1')] = 2
+summary(as.factor(pred_finale))
+pred_finale[which((pred_def=='1' && pred_att=='2') || pred_def=='2' && pred_att=='1')] = 1
+summary(as.factor(pred_finale))
+pred_finale = as.factor(pred_finale)
+```
+
+
+```{r}
+summary(pred_finale)
+```
 
 
 
 
+
+```{r}
+train3 = train2[-index_defense,]
+summary(train3$Position)
+summary(train2$Position)
+mod4 = glm(Position ~ ., data = train3, family = binomial)
+summary(modeleRegLog)
+```
+
+```{r include=FALSE}
+mod4 = step(mod4, direction = "both", k = log(n))
+```
+
+```{r}
+summary(mod4)
+```
+
+
+```{r}
+pred = predict.glm(mod3, newdata = train2, type = "response")
+pred = as.factor(round(pred))
+predFin = pred
+summary(pred)
+summary(train2$Position)
+```
+
+```{r}
+pred = predict.glm(mod4, newdata = train3, type = "response")
+pred = as.factor(round(pred))
+summary(pred)
+summary(train3$Position)
+```
 
 
 
