@@ -2,40 +2,48 @@
 title: "R Notebook"
 output: html_notebook
 ---
-
 # Projet Apprentissage statistque : Classification des postes des joueurs de fotball
 
 ## I. Introduction
 
-Le but de ce projet est de classer le poste des joueurs de football issue du dataset FIFA 2021.
+## Présentation du problème
+
+Il y a 4 types de positionnement au football : Gardien de but, défenseur, milieu et attaquant, comme on peut le voir sur l'image ci-dessous
+![Les positions au football](postes_foot.PNG)
+
+Certains jeunes joueurs peuvent jouer à des postes très différents. Notre objectif est de pouvoir conseiller le poste qui conviendrait le mieux à ces jeunes joueurs en utilisant l'intelligence artificielle.
+
+Pour cela, nous avons utilisé le jeu de données de FIFA 21 afin de pouvoir entrainer nos modèles.
 
 ```{r}
 players=read.csv("FIFA.csv")
-
 ```
+Sur ce dataset, chaque joueur possède un ID, son nom, sa nationalité, une note globale, son club et des informations sur son contrat (salaire, fin du contrat), ses caractéristiques physiques (poids, taille, corpulance), sa position. Enfin, les 30 dernières colones concernent les qualités footballistiques du joueur tels que sa qualité de passe, sa vitesse, sa capacité à controler le ballon, sa vision du jeu ou ses qualités défensives. Sur chaque caractéristiqur, le joueur est noté sur 100.
+
+Comme nous cherchons à prédire le poste selon les caractéristiques du joueurs, Les colonnes de ce jeu de données qui nous intéressent sont le poste ou "position"(la variable à expliquer) et les colonnes concernant les caractéristiques du joueurs. Nous les sélectionnons ci-dessous.
+```{r}
+players_2=players[,c("Position","Crossing", "Finishing","Heading.Accuracy","Short.Passing", "Volleys", "Dribbling", "Curve",              "FK.Accuracy","Long.Passing", "Ball.Control", "Acceleration", "Sprint.Speed","Agility","Reactions","Balance","Shot.Power","Jumping",   "Stamina","Strength","Long.Shots", "Aggression", "Interceptions", "Positioning","Vision","Penalties", "Composure",               "Defensive.Awareness", "Standing.Tackle", "Sliding.Tackle")]
+
+players_2=drop_na(players_2)
+players_3 = players_2 # Pour la 2e partie
+colnames(players_2)
+```
+## Présentation du dataset
+
 Sur ce dataset, chaque joueur possède un ID, son nom, sa nationalité, une note globale, son club et des informations sur son contrat (salaire, fin du contrat), ses caractéristiques physiques (poids, taille, corpulance), sa position. Enfin, les 30 dernières colones concernent les qualités footballistiques du joueur tels que sa qualité de passe, sa vitesse, sa capacité à controler le ballon, sa vision du jeu ou ses qualités défensives. Sur chaque caractéristiqur, le joueur est noté sur 100.
 
 Comme nous cherchons à prédire le poste selon les caractéristiques du joueurs, Les colonnes de ce jeu de données qui nous intéressent sont le poste ou "position"(la variable à expliquer) et les colonnes concernant les caractéristiques du joueurs. 
 
-![Les positions au football](postes_foot.PNG)
+Les différentes positions dans Fifa sont expliquées dans l'image ci-dessous
+__Mettre l'image avec les postes dans Fifa__
+![Les positions dans Fifa](postes_Fifa.PNG)
 
-Il y a 4 types de positionnement au football : Gardien de but, défenseur, milieu et attaquant.
+
 Classer les gardiens avec les autres joueurs n'a que peu d'intérêt. Ce poste est à part, les gardiens s'entraînent souvent de manière spécifique et ont un rôle très différent des autres joueurs. On écarte donc les gardiens de l'étude ainsi que les colonnes concernant les caractériqtiques spécifiques des autres joueurs.
 
 On peut voir également qu'il y a des milieux défensifs et offensifs.  Les milieux défensifs vont avoir des qualités proches de celles des défenseurs tandis que les milieux offensifs seront plus proches des attaquants. 
-Ainsi, nous commencerons par tester nos modèles en prenant en compte uniquement les défenseurs et les milieux de terrain.
 
-```{r}
-players_2=players[,c("Position","Crossing", "Finishing","Heading.Accuracy","Short.Passing", "Volleys", "Dribbling", "Curve",              "FK.Accuracy","Long.Passing", "Ball.Control", "Acceleration", "Sprint.Speed","Agility","Reactions","Balance","Shot.Power","Jumping",   "Stamina","Strength","Long.Shots", "Aggression", "Interceptions", "Positioning","Vision","Penalties", "Composure",               "Defensive.Awareness", "Standing.Tackle", "Sliding.Tackle")]
-players_3 = players_2 # Pour la 2e partie
-colnames(players_2)
-```
-```{r}
-levels(as.factor(players[,"Position"]))
-```
-
-
-
+Pour vérifier cette information sur nos données, nous allons maintenant visualiser les différences et les points commun entre attaquants, milieux et défenseurs. Pour chaque caractéristique, nous ferons une moyenne des notes par type de joueurs, puis nous comparerons les résultats obtenus.
 ```{r}
 Attack=c("LW", "LF", "RW","RF", "CF", "ST")
 Defense=c("RB", "RWB", "LB", "LWB", "CB")
@@ -48,12 +56,84 @@ index_defense=which(players_2$Position %in%(Defense))
 index_defense
 players_2[index_defense, "Position"]=0
 players_2=players_2[c(index_attack,index_defense),]
+
+Midfielder=c("CAM", "CM", "CDM", "LM", "RM")
+index_mid=which(players_3$Position %in%(Midfielder))
+index_attack=which(players_3$Position %in%(Attack))
+index_defense=which(players_3$Position %in%(Defense))
+players_3[index_attack, "Position"]=2
+players_3[index_mid, "Position"]=1
+players_3[index_defense, "Position"]=0
+
+players_3=players_3[c(index_attack,index_defense,index_mid),]
+players_3
 ```
 ```{r}
-#Suppression des Na
-  library(tidyverse)
-drop_na(players_2)
+n=29
+att=colMeans(players_3[which(players_3[,"Position"]==2),2:length(players_3[1,])])
+length(colnames(players_3[,-1]))
+mid=colMeans(players_3[which(players_3[,"Position"]==1),2:length(players_3[1,])])
+def=colMeans(players_3[which(players_3[,"Position"]==0),2:length(players_3[1,])])
+
+mean=data.frame(defense=def,midfield=mid, attack=att)
+best_char=c()
+for(i in 1:n){
+  best_char=c(best_char, as.numeric(which.max(mean[i,])-1) )
+}
+
+# On trace le barplot avec les caractéristiques où les attaquants sont les meilleurs
+att_best_att=att[which(best_char==2)]
+mid_best_att=mid[which(best_char==2)]
+def_best_att=def[which(best_char==2)]
+col=colnames(players_3[,-1])[which(best_char==2)]
+
+n1=length(att_best_att)
+ggplot(data=data.frame(caracteristique=rep(col,3), moyenne=c(att_best_att,mid_best_att,def_best_att), position=c(rep("Att",n1),rep("Mid",n1), rep("Def",n1))))+geom_col(aes(x=caracteristique,y=moyenne, fill=position), position = "dodge", width=0.5, size=3.5)+coord_flip()+ggtitle("Moyenne des caractéristiques où les attaquants sont les meilleurs \n")
 ```
+Les attaquants sont nettement meilleurs que les autres sur les reprises de volées (volleys), la vitesse de pointe (sprint.speed) la finition (l'efficacité devant le but), le placement (positionning) et pour les penaltiesce qui semble logique puisque leur rôle consiste à amener du danger près du but adverse grâce à la vitesse et à marquer. De plus, ce sont plus souvent les attaquants qui tirent les penalty.
+
+Ils sont en revanche similaire proche des milieux en terme de puissance de frappe, de frappe longue et d'accélération. En effet, les milieux peuvent frappent souvent de loin et se doivent d'être explosif.
+
+Enfin, les trois types de joueurs ont une note de "reaction" assez proche puisque quelque soit le poste, un joueur de football doit réagir rapidement lors d'une situation donnée.
+
+Maintenant nous allons analyser les caractéristiques où les défenseurs sont les meilleurs
+
+```{r}
+att_best_mid=att[which(best_char==1)]
+mid_best_mid=mid[which(best_char==1)]
+def_best_mid=def[which(best_char==1)]
+col2=colnames(players_3[,-1])[which(best_char==1)]
+
+n2=length(att_best_mid)
+ggplot(data=data.frame(caracteristique=rep(col2,3), moyenne=c(att_best_mid,mid_best_mid,def_best_mid), position=c(rep("Att",n2),rep("Mid",n2), rep("Def",n2))))+geom_col(aes(x=caracteristique,y=moyenne, fill=position), position = "dodge", width=0.5, size=3.5)+coord_flip()+ggtitle("Moyenne des caractéristiques où les milieux sont les meilleurs \n")
+```
+Les milieux sont au coeur du jeu. Ils font le lien entre l'attauqe et la défense. Ils distribuent le jeu par leurs passes et sont des éléments important du dispositif défensif de l'équipe. Cela explique pourquoi leur vision du jeu, leur capacité de passe courte et longue, leur capacité de centre ("crossing"). Ils sont aussi en moyenne plus souple ("Balance") vu qu'ils doivent réalisé à la fois des gestes défensifs et offensifs très différent.
+Leur efficacité sur coup-franc est également plus élevé (Free-Kick accuracy)
+Leur facilitée à centrer et à tirer les coup-franc peut être du à une bonne note sur "curve" qui consiste à "enrouler" un ballon, c'est à dire à lui donner un effet pour que le ballon ait une trajectoire courbe.
+
+En revanche, ils sont proches des attaquantq concernant la capacité à dribbler, le contrôle du ballon, l'agilité ou capacité à gérer la pression (composure). En effet, ces 2 postes nécessitent d'être à l'aise avec le ballon et de réaliser des gestes décisifs où la pression peut être grande (penalty, coup-franc).
+
+Maintenant nous allons analyser les caractéristiques où les défenseurs sont les meilleurs.
+```{r}
+att_best_def=att[which(best_char==0)]
+mid_best_def=mid[which(best_char==0)]
+def_best_def=def[which(best_char==0)]
+col3=colnames(players_3[,-1])[which(best_char==0)]
+
+n3=length(att_best_def)
+ggplot(data=data.frame(caracteristique=rep(col3,3), moyenne=c(att_best_def,mid_best_def,def_best_def), position=c(rep("Att",n3),rep("Mid",n3), rep("Def",n3))))+geom_col(aes(x=caracteristique,y=moyenne, fill=position), position = "dodge", width=0.5, size=3.5)+coord_flip()+ggtitle("Moyenne des caractéristiques où les défenseurs sont les meilleurs \n")
+```
+Bien évidemment les défenseurs ont des meilleurs notes pour les gestes défensifs, c'est à dire les tacles debout ou glissés (standing et sliding tackle), les interceptions, l'agressivité (agression), la vigilance défensive (Defensive Awarness).
+
+Ils sont proches des attaquants pour la force et la précision de la tête. En effet, attaquants et défenseurs sont souvent au duel. De plus, il ya beaucoup de duel aérien entre les attquants et les défenseurs. Enfin, les grands  défenseurs montent sur certains coup-franc et sur les corners pour marquer de la tête.
+
+Enfin, sur nos données défenseurs et attaquants sont proches en terme d'endurance.
+
+
+
+Ainsi, nous avons pu remarquer que les milieux sont proches des attquants sur 7 des 29 caractéristiques et proches des défenseurs sur une des caractéristques. En revanche, mis à part sur 2 caractéristques, attaquants et défenseurs semblent former 2 groupes bien distincts.
+
+C'est pourquoi, nous commencerons par tester nos modèles en prenant en compte uniquement les défenseurs et les milieux de terrain. Le dataframe "players_2" servira pour la classification entre attaquants et déefenseurs tandis que le dataframe "players_3" servira pour la classification entre défenseurs, milieux et attaquants.
 
 Séparation en jeu de données test et validation
 ```{r}
