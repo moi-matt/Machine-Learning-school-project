@@ -234,15 +234,202 @@ three_layers1 =
 ## Prise en compte des milieux de terrain
 
 ```{r}
-Midfielder=c("CAM", "CM", "CDM", "LM", "RM")
-index_mid=which(players_2$Position %in%(Midfielder))
+#Séparation du jeu de données
+n=length(players_3[,1])
+set.seed(1234)
+len.app=as.integer(3*n/4)
+tirage=sample(seq(1,n),len.app, replace=FALSE)
+train_mid = players_3[tirage,]
+x_train_mid = as.matrix(train_mid[,2:length(train[1,])])
+y_train_mid = as.numeric(train_mid[,1])
 
-players_3[index_mid, "Position"]=1
+test_mid = players_3[-tirage,]
+
+x_test_mid = as.matrix(test_mid[,2:length(test_mid[1,])])
+y_test_mid = as.numeric(test_mid[,1])
+```
+
+```{r}
+single1_mid = compile_fit(single_perceptron, "relu", x=x_train_mid, y=y_train_mid, loss="sparse_categorical_crossentropy",epochs=30,final_units=3)
+single1_mid[[1]] %>% evaluate(x_test_mid,y_test_mid)
+plot(single1_mid[[2]])
+```
+```{r}
+single1_mid2 = compile_fit(single_perceptron, "sigmoid", x=x_train_mid, y=y_train_mid, loss="sparse_categorical_crossentropy",final_units=3)
+single1_mid2[[1]] %>% evaluate(x_test_mid,y_test_mid)
+plot(single1_mid2[[2]])
+```
+```{r}
+single_mid3 = compile_fit(single_perceptron, "softmax", x=x_train_mid, y=y_train_mid, loss="sparse_categorical_crossentropy",final_units=3)
+single_mid3[[1]] %>% evaluate(x_test_mid,y_test_mid)
+plot(single_mid3[[2]])
+```
+```{r}
+two_mid1 = compile_fit(two_layers, "softmax", x=x_train_mid, y=y_train_mid, loss="sparse_categorical_crossentropy",final_units=3)
+two_mid1[[1]] %>% evaluate(x_test_mid,y_test_mid)
+plot(two_mid1[[2]])
+```
+```{r}
+two_mid2 = compile_fit(two_layers, "relu", x=x_train_mid, y=y_train_mid, loss="sparse_categorical_crossentropy",final_units=3)
+two_mid2[[1]] %>% evaluate(x_test_mid,y_test_mid)
+plot(two_mid2[[2]])
+```
+```{r}
+two_mid3 = compile_fit(two_layers, "sigmoid", x=x_train_mid, y=y_train_mid, loss="sparse_categorical_crossentropy",epochs=50,final_units=3)
+two_mid3[[1]] %>% evaluate(x_test_mid,y_test_mid)
+plot(two_mid3[[2]])
+```
+```{r}
+three_mid1 = compile_fit(three_layers, "softmax", x=x_train_mid, y=y_train_mid, loss="sparse_categorical_crossentropy",final_units=3)
+three_mid1[[1]] %>% evaluate(x_test_mid,y_test_mid)
+plot(three_mid1[[2]])
+```
+```{r}
+three_mid2 = compile_fit(three_layers, "sigmoid", x=x_train_mid, y=y_train_mid, loss="sparse_categorical_crossentropy",final_units=3)
+three_mid2[[1]] %>% evaluate(x_test_mid,y_test_mid)
+plot(three_mid2[[2]])
+```
+```{r}
+three_mid3 = compile_fit(three_layers, "relu", x=x_train_mid, y=y_train_mid, loss="sparse_categorical_crossentropy",final_units=3)
+three_mid3[[1]] %>% evaluate(x_test_mid,y_test_mid)
+plot(three_mid3[[2]])
+```
+```{r}
+model = keras_model_sequential() 
+model %>% layer_dense(units=50, activation="sigmoid", input_shape=length(x_train[1,])) 
+model %>% layer_dense(units=25, activation="sigmoid") 
+model %>% layer_dense(units=12, activation="relu") 
+model %>% layer_dense(units=3, activation="softmax")
+```
+```{r}
+model %>% compile(loss="sparse_categorical_crossentropy",optimizer="adam",metrics='accuracy')
+summary(model)
+history=model%>% fit(x=x_train_mid, y=y_train_mid, epochs=50, batch_size=5,validation_split=0.2)
+plot(history)
+```
+
+```{r}
+model = keras_model_sequential() 
+model %>% layer_dense(units=50, activation="sigmoid", input_shape=length(x_train[1,])) 
+model %>% layer_dense(units=25, activation="sigmoid") 
+model %>% layer_dense(units=12, activation="sigmoid") 
+model %>% layer_dense(units=3, activation="softmax")
+model %>% compile(loss="sparse_categorical_crossentropy",optimizer="adam",metrics='accuracy')
+summary(model)
+history=model%>% fit(x=x_train_mid, y=y_train_mid, epochs=50, batch_size=5,validation_split=0.2)
+plot(history)
+model %>% evaluate(x_test_mid, y_test_mid)
+```
+```{r}
+model = keras_model_sequential() 
+model %>% layer_dense(units=50, activation="sigmoid", input_shape=length(x_train[1,])) 
+model %>% layer_dense(units=25, activation="softmax") 
+model %>% layer_dense(units=12, activation="sigmoid") 
+model %>% layer_dense(units=3, activation="softmax")
+model %>% compile(loss="sparse_categorical_crossentropy",optimizer="adam",metrics='accuracy')
+summary(model)
+history=model%>% fit(x=x_train_mid, y=y_train_mid, epochs=50, batch_size=5,validation_split=0.2)
+plot(history)
+model %>% evaluate(x_test_mid, y_test_mid)
+```
+```{r}
+model = keras_model_sequential() 
+model %>% layer_dense(units=50, activation="sigmoid", input_shape=length(x_train[1,])) 
+model %>% layer_dense(units=25, activation="relu") 
+model %>% layer_dense(units=12, activation="sigmoid") 
+model %>% layer_dense(units=3, activation="softmax")
+model %>% compile(loss="sparse_categorical_crossentropy",optimizer="adam",metrics='accuracy')
+summary(model)
+history=model%>% fit(x=x_train_mid, y=y_train_mid, epochs=50, batch_size=5,validation_split=0.2)
+plot(history)
+model %>% evaluate(x_test_mid, y_test_mid)
+```
 
 
-players_3[index_defense, "Position"]=0
+```{r}
+model = keras_model_sequential() 
+model %>% layer_dense(units=50, activation="sigmoid", input_shape=length(x_train[1,])) 
+model %>% layer_dense(units=25, activation="sigmoid") 
+model %>% layer_dense(units=12, activation="sigmoid") 
+model %>% layer_dense(units=3, activation="sigmoid")
+model %>% compile(loss="sparse_categorical_crossentropy",optimizer="adam",metrics='accuracy')
+summary(model)
+history=model%>% fit(x=x_train_mid, y=y_train_mid, epochs=50, batch_size=5,validation_split=0.2)
+plot(history)
+model %>% evaluate(x_test_mid, y_test_mid)
+```
 
-players_3=players_3[c(index_attack,index_defense,index_mid),]
+```{r}
+model = keras_model_sequential() 
+model %>% layer_dense(units=50, activation="sigmoid", input_shape=length(x_train[1,])) 
+model %>% layer_dense(units=25, activation="relu") 
+model %>% layer_dense(units=12, activation="sigmoid") 
+model %>% layer_dense(units=3, activation="softmax")
+model %>% compile(loss="sparse_categorical_crossentropy",optimizer="adam",metrics='accuracy')
+summary(model)
+history=model%>% fit(x=x_train_mid, y=y_train_mid, epochs=50, batch_size=5,validation_split=0.2)
+plot(history)
+model %>% evaluate(x_test_mid, y_test_mid)
+```
+
+```{r}
+model = keras_model_sequential() 
+model %>% layer_dense(units=100, activation="sigmoid", input_shape=length(x_train[1,])) 
+model %>% layer_dense(units=50, activation="sigmoid") 
+model %>% layer_dense(units=25, activation="sigmoid") 
+model %>% layer_dense(units=12, activation="sigmoid")
+model %>% layer_dense(units=3, activation="softmax")
+model %>% compile(loss="sparse_categorical_crossentropy",optimizer="adam",metrics='accuracy')
+summary(model)
+history=model%>% fit(x=x_train_mid, y=y_train_mid, epochs=50, batch_size=5,validation_split=0.3)
+plot(history)
+model %>% evaluate(x_test_mid, y_test_mid)
+```
+
+```{r}
+model = keras_model_sequential() 
+model %>% layer_dense(units=200, activation="sigmoid", input_shape=length(x_train[1,])) 
+model %>% layer_dense(units=100, activation="relu") 
+model %>% layer_dense(units=50, activation="sigmoid") 
+model %>% layer_dense(units=25, activation="relu")
+model %>% layer_dense(units=12, activation="sigmoid")
+model %>% layer_dense(units=3, activation="softmax")
+model %>% compile(loss="sparse_categorical_crossentropy",optimizer="adam",metrics='accuracy')
+summary(model)
+history=model%>% fit(x=x_train_mid, y=y_train_mid, epochs=50, batch_size=5,validation_split=0.3)
+plot(history)
+model %>% evaluate(x_test_mid, y_test_mid)
+```
+
+```{r}
+model = keras_model_sequential() 
+model %>% layer_dense(units=200, activation="sigmoid", input_shape=length(x_train[1,])) 
+model %>% layer_dense(units=100, activation="relu") 
+model %>% layer_dense(units=50, activation="sigmoid") 
+model %>% layer_dense(units=25, activation="relu")
+model %>% layer_dense(units=12, activation="sigmoid")
+model %>% layer_dense(units=3, activation="sigmoid")
+model %>% compile(loss="sparse_categorical_crossentropy",optimizer="adam",metrics='accuracy')
+summary(model)
+history=model%>% fit(x=x_train_mid, y=y_train_mid, epochs=50, batch_size=5,validation_split=0.3)
+plot(history)
+model %>% evaluate(x_test_mid, y_test_mid)
+```
+
+```{r}
+model = keras_model_sequential() 
+model %>% layer_dense(units=800, activation="sigmoid", input_shape=length(x_train[1,])) 
+model %>% layer_dense(units=400, activation="relu") 
+model %>% layer_dense(units=200, activation="sigmoid")
+model %>% layer_dense(units=100, activation="relu") 
+model %>% layer_dense(units=50, activation="sigmoid") 
+model %>% layer_dense(units=12, activation="sigmoid")
+model %>% layer_dense(units=3, activation="softmax")
+model %>% compile(loss="sparse_categorical_crossentropy",optimizer="adam",metrics='accuracy')
+summary(model)
+history=model%>% fit(x=x_train_mid, y=y_train_mid, epochs=50, batch_size=5,validation_split=0.3)
+plot(history)
+model %>% evaluate(x_test_mid, y_test_mid)
 ```
 
 ### SVM
