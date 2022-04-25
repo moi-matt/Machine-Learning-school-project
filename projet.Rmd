@@ -531,127 +531,51 @@ temp = is.na(apply(players_3[,2:length(colnames(train))],1,sum))
 nRemovedTrain = sum(1*temp)
 players_3 = players_3[!temp,]
 summary(players_3)
-```
-### II.A Régression logistique
+``### II.A Régression logistique
+
+
+## Prise en compte des milieux de terrain
+
+Le modèle logistique en tant que tel ne se limite qu'aux variables réponses binaires. 
+
+Or, dans ce nouveau cas, nous souhaitons mettre en place une régression sur une variable à trois modalités. Il va donc falloir trouver une manière d'adapter la régression logistique à ce cas. Nous allons voir de manière de faire cela.
+
+### Modèle polytomique nominal :
+
+Le premier modèle qui sera mis en place est le modèle polytomique nominal. Celui-ci a pour objectif d'estimer de manière indépendante les probabilités que Y soit égal à chacune des modalités, en fonction de la valeur de X.
+Voici le modèle qui correspond :
+
+![Modele nominal](formule_modele.PNG)
+
+Dans ce modèle, chaque j correspond à une modalité, dans notre cas, il y en a trois, qui correspondent aux défenseur, milieu ou attaquant. De plus, on définit ainsi une variable de référence (notée K dans le modèle).
+
+La formule classique pour retrouver la probabilité est ensuite utilisée :
+
+![calcul proba](calcul_proba.PNG)
+
+Pour calculer les estimateurs des paramètres beta, on utilise les estimateurs du max de vraissemblance, calculés en annulant les dérivées partielles de la vraissemblance par rapport aux paramètres.
+
+Pour la mise en oeuvre pratique de cette méthode, nous utilisons la fonction vglm du package VGAM.
 
 ```{r}
-train$Position = as.factor(train$Position)
+install.packages('VGAM')
+library('VGAM')
 ```
-
-```{r}
-temp = is.na(apply(train[,2:length(colnames(train))],1,sum))
-nRemovedTrain = sum(1*temp)
-train2 = train[!temp,]
-summary(train2)
-```
-
-
-```{r}
-temp = is.na(apply(test[,2:length(colnames(test))],1,sum))
-nRemovedTest = sum(1*temp)
-test2 = test[!temp,]
-summary(test2)
-```
-
-
-```{r}
-modeleRegLog = glm(Position ~ ., data = train2, family = binomial)
-summary(modeleRegLog)
-```
-
-
-```{r}
-modeleRegLogCorr = step(modeleRegLog, direction = "both", k = log(n))
-```
-
-```{r}
-summary(modeleRegLogCorr)
-residus = modeleRegLogCorr$residuals
-fittedValuesTrain = round(modeleRegLogCorr$fitted.values)
-results = summary(as.factor((as.double(train2$Position)-1-round(modeleRegLogCorr$fitted.values))^2))
-resultats = results[1]/(sum(results))*100
-resultats
-#fittedValuesTrain
-```
-
-```{r}
-prediction = round(predict.glm(modeleRegLogCorr, newdata = test2, type = "response"))
-resultsTest = summary(as.factor((as.double(test2$Position)-prediction)^2))
-tauxErreur = resultsTest[1]/(sum(resultsTest))*100
-resultsTest
-tauxErreur
-```
-
 
 
 
 ```{r}
-train3 = train2[-index_defense,]
-summary(train3$Position)
-summary(train2$Position)
-mod4 = glm(Position ~ ., data = train3, family = binomial)
-summary(modeleRegLog)
-```
-
-```{r include=FALSE}
-mod4 = step(mod4, direction = "both", k = log(n))
-```
-
-```{r}
-summary(mod4)
-```
-
-
-```{r}
-pred = predict.glm(mod3, newdata = train2, type = "response")
-pred = as.factor(round(pred))
-predFin = pred
-summary(pred)
-summary(train2$Position)
-```
-
-```{r}
-pred = predict.glm(mod4, newdata = train3, type = "response")
-pred = as.factor(round(pred))
-summary(pred)
-summary(train3$Position)
-```
-
-
-
-
-
-
-
-
-
-
-```{r}
-n=length(players_3[,1])
-n
-len.app=as.integer(3*n/4)
-len.app
-tirage=sample(seq(1,n),len.app, replace=FALSE)
-train=players_3[tirage,]
-x_train= as.matrix(train[,2:length(train[1,])])
-y_train= train$Position
-test=players_3[-tirage,]
-x_test= as.matrix(test[,2:length(test[1,])])
-y_test= (test[,1])
-```
-
-```{r}
-modTest = vglm(Position~.,data = train, family = multinomial)
+modTest = vglm(Position~.,data = train_mid, family = multinomial)
 summary(modTest)
 ```
 
-Sélection de variables :
+Nous sélectionnons les variables dont au moins une des déclinaisons de modalités est significative.
 
 ```{r}
 variablesAGarder = c("Position","Crossing", "Finishing", "Heading.Accuracy", "Short.Passing", "Volleys", "Curve", "Long.Passing", "Sprint.Speed", "Reactions", "Shot.Power", "Jumping", "Aggression", "Interceptions", "Positioning", "Vision", "Penalties", "Composure", "Defensive.Awareness", "Sliding.Tackle")
-train = train[,variablesAGarder]
-test = test[, variablesAGarder]
-modTest = vglm(Position~. ,data = train, family = multinomial)
+train_mid = train_mid[,variablesAGarder]
+test_mid = test_mid[, variablesAGarder]
+modTest = vglm(Position~. ,data = train_mid, family = multinomial)
 summary(modTest)
 ```
 
@@ -660,49 +584,12 @@ summary(modTest)
 prediction = predictvglm(modTest, newdata = test, type = 'response')
 head(prediction)
 ```
-
-
-```{r}
-plot(prediction[,1])
-plot(prediction[,2])
-plot(prediction[,3])
-head(prediction)
-```
+On peut représenter pour chacun des joueurs la probabilités qu'ils soient un un défenseur, un milieu ou un attaquant.
 
 ```{r}
-prediction_finale = data.frame("n0_joueur" = as.integer(row.names(prediction)), "prediction" = rep(0, length(prediction[,1])))
-for (i in 1:length(prediction[,1])) {
-  prediction_finale[i,2] = as.integer(which.max(prediction[i,]))
-}
-prediction_finale
-```
-
-```{r}
-prediction_finale = cbind(prediction_finale, "reel" = 0)
-```
-
-
-```{r}
-for (i in 1:length(prediction[,1])) {
-  prediction_finale$reel[i] = test$Position[i]
-}
-prediction_finale
-```
-
-Calcul du taux d'erreur :
-
-```{r}
-testEgal <- function(var) {
-  return(as.integer(var[2] == var[3]))
-}
-```
-
-nombre de vrais :
-
-```{r}
-nReussite = apply(prediction_finale, 1, testEgal)
-tauxReussiteVGLM = (sum(nReussite))/length(nReussite)
-tauxReussiteVGLM
+plot(prediction[,1], main="Probabilité pour chaque joueur d'être défenseur")
+plot(prediction[,2], main="Probabilité pour chaque joueur d'être milieu")
+plot(prediction[,3], main="Probabilité pour chaque joueur d'être attaquant")
 ```
 
 
