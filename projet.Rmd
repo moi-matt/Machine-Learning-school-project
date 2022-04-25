@@ -692,3 +692,12 @@ train.svm.poly
 plot(train.svm.poly, metric = "Accuracy", xTrans = log10, xlab = "log10 Cp", main = "Polynomial svm (Accuracy criterion)")
 plot(train.svm.poly, metric = "Kappa", xTrans = log10, xlab = "log10 Cp", main = "Polynomial svm (Kappa criterion)")
 ```
+
+```{r}
+train.svm.poly$finalModel
+```
+
+
+```{r}
+pred.svm.poly <- predict(train.svm.poly,newdata = test)
+```
