@@ -461,16 +461,14 @@ summary(pred)
 summary(train3$Position)
 ```
 
-```{r}
-modTest = vglm(Position~.,data = train, family = multinomial)
-summary(modTest)
-```
 
-Sélection de variables :
 
-```{r}
-predict.vgam(modTest, newdata = test, type = 'response')
-```
+
+
+
+
+
+
 
 ```{r}
 n=length(players_3[,1])
@@ -493,8 +491,23 @@ modTest = vglm(Position~.,data = train, family = multinomial)
 summary(modTest)
 ```
 
+Sélection de variables :
+
+```{r}
+variablesAGarder = c("Position","Crossing", "Finishing", "Heading.Accuracy", "Short.Passing", "Volleys", "Curve", "Long.Passing", "Sprint.Speed", "Reactions", "Shot.Power", "Jumping", "Aggression", "Interceptions", "Positioning", "Vision", "Penalties", "Composure", "Defensive.Awareness", "Sliding.Tackle")
+
+train = train[,variablesAGarder]
+test = test[, variablesAGarder]
+
+modTest = vglm(Position~. ,data = train, family = multinomial)
+summary(modTest)
+
+```
+
+
 ```{r}
 prediction = predictvglm(modTest, newdata = test, type = 'response')
+head(prediction)
 ```
 
 
@@ -533,7 +546,7 @@ testEgal <- function(var) {
 }
 ```
 
-nombre d'erreurs :
+nombre de vrais :
 
 ```{r}
 nReussite = apply(prediction_finale, 1, testEgal)
