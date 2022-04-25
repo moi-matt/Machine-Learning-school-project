@@ -603,6 +603,30 @@ why decision tree is not computaitionally expensive?
 "
 Decision trees algorithms do not compute all possible trees when they fit a tree. If they did they would be solving an NP-hard problem. Decision tree fitting algorithms typically make greedy decisions in the fitting process—at each stage they optimize the sub-problem for finding an optimal split with the data in the given node and the keep moving forward in the fitting process. Also, as you move deeper into the decision tree you have a smaller set of data that has made it to the given node so that you will be optimizing the splitting rule over a smaller subset of data. All of these choices are linear scans of the data in the given node. This is not complicated to do but can become somewhat expensive computationally if you have a large number of observations or a large number of covariates to split on. However, a lot of the work can be split up and sent off to different machines to work on so there are ways to build out your computational architecture to scale up. In general though, the method works fairly quickly on lots of the datasets you see in coursework and in many real world scenarios as well."
 
+## ada boost
+
+```{r}
+boost.train.data = na.omit(tree_train_data)
+boost.test.data = na.omit(tree_test_data)
+gr.ada = expand.grid(nIter=c(1,10,20,30,40,50),method=c("Real adaboost"))
+mod.ada = train(Position~ ., 
+                data = boost.train.data, 
+                method = "adaboost", 
+                trControl = ctrl, 
+                tuneGrid = gr.ada)
+```
+
+```{r}
+plot(mod.ada, metric = "Accuracy", xlab = "M", main = "Adaboost (Accuracy)")
+plot(mod.ada, metric = "Kappa", xlab = "M", main = "Adaboost (Kappa)")
+```
+
+```{r}
+pred.ada <- predict(mod.ada,boost.test.data)
+confusionMatrix(pred.ada,reference = boost.test.data$Position)
+```
+
+
 ## Prise en compte des milieux de terrain
 
 ```{r}
