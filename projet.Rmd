@@ -217,7 +217,7 @@ The function **plot** helps to visualize la perte et pa performance en fonction 
 plot(p.sig)
 ```
 
-# Régression logistique Ridge et Lasso
+# Régression logistique
 
 ```{r}
 train$Position = as.factor(train$Position)
@@ -460,6 +460,89 @@ pred = as.factor(round(pred))
 summary(pred)
 summary(train3$Position)
 ```
+
+```{r}
+modTest = vglm(Position~.,data = train, family = multinomial)
+summary(modTest)
+```
+
+Sélection de variables :
+
+```{r}
+predict.vgam(modTest, newdata = test, type = 'response')
+```
+
+```{r}
+n=length(players_3[,1])
+n
+len.app=as.integer(3*n/4)
+len.app
+tirage=sample(seq(1,n),len.app, replace=FALSE)
+train=players_3[tirage,]
+x_train= as.matrix(train[,2:length(train[1,])])
+y_train= train$Position
+
+test=players_3[-tirage,]
+
+x_test= as.matrix(test[,2:length(test[1,])])
+y_test= (test[,1])
+```
+
+```{r}
+modTest = vglm(Position~.,data = train, family = multinomial)
+summary(modTest)
+```
+
+```{r}
+prediction = predictvglm(modTest, newdata = test, type = 'response')
+```
+
+
+```{r}
+plot(prediction[,1])
+plot(prediction[,2])
+plot(prediction[,3])
+head(prediction)
+```
+
+```{r}
+prediction_finale = data.frame("n0_joueur" = as.integer(row.names(prediction)), "prediction" = rep(0, length(prediction[,1])))
+for (i in 1:length(prediction[,1])) {
+  prediction_finale[i,2] = as.integer(which.max(prediction[i,]))
+}
+prediction_finale
+```
+
+```{r}
+prediction_finale = cbind(prediction_finale, "reel" = 0)
+```
+
+
+```{r}
+for (i in 1:length(prediction[,1])) {
+  prediction_finale$reel[i] = test$Position[i]
+}
+prediction_finale
+```
+
+Calcul du taux d'erreur :
+
+```{r}
+testEgal <- function(var) {
+  return(as.integer(var[2] == var[3]))
+}
+```
+
+nombre d'erreurs :
+
+```{r}
+nReussite = apply(prediction_finale, 1, testEgal)
+tauxReussiteVGLM = (sum(nReussite))/length(nReussite)
+tauxReussiteVGLM
+```
+
+
+
 
 
 
