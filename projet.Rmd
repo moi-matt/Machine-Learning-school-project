@@ -127,10 +127,30 @@ tauxErreur
 
 ## Prise en compte des milieux de terrain
 
+Le modèle logistique en tant que tel ne se limite qu'aux variables réponses binaires. Or, dans ce nouveau cas, nous souhaitons mettre en place une régression sur une variable à trois modalités. Il va donc falloir trouver une manière d'adapter la régression logistique à ce cas. Nous allons voir de manière de faire cela.
 
-#### Modèle polytomique nominal :
+### Modèle polytomique nominal :
 
-Le modèle logistique en tant que tel ne se limite qu'aux variables réponses binaires. Or, dans notre cas, 
+Le premier modèle qui sera mis en place est le modèle polytomique nominal. Celui-ci a pour objectif d'estimer de manière indépendante les probabilités que Y soit égal à chacune des modalités, en fonction de la valeur de X.
+Voici le modèle qui correspond :
+
+![Modele nominal](formule_modele.PNG)
+
+Dans ce modèle, chaque j correspond à une modalité, dans notre cas, il y en a trois, qui correspondent aux défenseur, milieu ou attaquant. De plus, on définit ainsi une variable de référence (notée K dans le modèle).
+
+La formule classique pour retrouver la probabilité est ensuite utilisée :
+
+![calcul proba](calcul_proba.PNG)
+
+Pour calculer les estimateurs des paramètres beta, on utilise les estimateurs du max de vraissemblance, calculés en annulant les dérivées partielles de la vraissemblance par rapport aux paramètres.
+
+Pour la mise en oeuvre pratique de cette méthode, nous utilisons la fonction vglm du package VGAM.
+
+```{r}
+install.packages('VGAM')
+library('VGAM')
+```
+
 
 ```{r}
 Midfielder=c("CAM", "CM", "CDM", "LM", "RM")
@@ -157,49 +177,6 @@ summary(players_3)
 
 
 
-
-
-```{r}
-train3 = train2[-index_defense,]
-summary(train3$Position)
-summary(train2$Position)
-mod4 = glm(Position ~ ., data = train3, family = binomial)
-summary(modeleRegLog)
-```
-
-```{r include=FALSE}
-mod4 = step(mod4, direction = "both", k = log(n))
-```
-
-```{r}
-summary(mod4)
-```
-
-
-```{r}
-pred = predict.glm(mod3, newdata = train2, type = "response")
-pred = as.factor(round(pred))
-predFin = pred
-summary(pred)
-summary(train2$Position)
-```
-
-```{r}
-pred = predict.glm(mod4, newdata = train3, type = "response")
-pred = as.factor(round(pred))
-summary(pred)
-summary(train3$Position)
-```
-
-
-
-
-
-
-
-
-
-
 ```{r}
 n=length(players_3[,1])
 n
@@ -221,7 +198,7 @@ modTest = vglm(Position~.,data = train, family = multinomial)
 summary(modTest)
 ```
 
-Sélection de variables :
+Nous sélectionnons les variables dont au moins une des déclinaisons de modalités est significative.
 
 ```{r}
 variablesAGarder = c("Position","Crossing", "Finishing", "Heading.Accuracy", "Short.Passing", "Volleys", "Curve", "Long.Passing", "Sprint.Speed", "Reactions", "Shot.Power", "Jumping", "Aggression", "Interceptions", "Positioning", "Vision", "Penalties", "Composure", "Defensive.Awareness", "Sliding.Tackle")
@@ -287,6 +264,8 @@ tauxReussiteVGLM
 
 
 #### Modèle polytomique ordonne :
+
+Un deuxième type de modèle découle de l'observation suivante : défenseur, milieu et attaquant ne sont pas simplement trois modalité : on peut leur attacher une notion d'ordre. En effet, pour simplifier, on peut dire que le milieux sont des joueurs "intermédiaires" entre les attaquants et les défenseurs. On peut donc supposer que cette notion d'ordre pourrait se transmettre aussi aux compétences que le joueurs possèdent. Si tel est le cas, il peut être judicieux de considérer la variable réponse comme une variable continue qui vaut 0 si le joueur est un défenseur, 1 s'il est milieu de terrain et 2 s'il est attaquant. On rentre dans ce cas à nouveau dans le cadre d'un modèle logistique, simple, que l'on va ici appliquer avec la fonction glm :
 
 ```{r}
 trainOrdonne = train
