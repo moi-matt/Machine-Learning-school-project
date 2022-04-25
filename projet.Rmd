@@ -127,6 +127,11 @@ tauxErreur
 
 ## Prise en compte des milieux de terrain
 
+
+#### Modèle polytomique nominal :
+
+Le modèle logistique en tant que tel ne se limite qu'aux variables réponses binaires. Or, dans notre cas, 
+
 ```{r}
 Midfielder=c("CAM", "CM", "CDM", "LM", "RM")
 Attack=c("LW", "LF", "RW","RF", "CF", "ST")
@@ -226,7 +231,6 @@ test = test[, variablesAGarder]
 
 modTest = vglm(Position~. ,data = train, family = multinomial)
 summary(modTest)
-
 ```
 
 
@@ -242,6 +246,7 @@ plot(prediction[,2])
 plot(prediction[,3])
 head(prediction)
 ```
+
 
 ```{r}
 prediction_finale = data.frame("n0_joueur" = as.integer(row.names(prediction)), "prediction" = rep(0, length(prediction[,1])))
@@ -281,6 +286,24 @@ tauxReussiteVGLM
 
 
 
+#### Modèle polytomique ordonne :
+
+```{r}
+trainOrdonne = train
+trainOrdonne$Position = (as.double(trainOrdonne$Position)-1)/2
+```
+
+```{r}
+modOrdonne = glm(Position~. ,data = trainOrdonne, family = 'binomial')
+summary(modOrdonne)
+```
+
+```{r}
+pred = as.factor(round(predict.glm(modOrdonne, newdata = test, type = 'response')*2))
+verif = as.integer(pred == test$Position)
+taux = sum(verif)/length(verif)
+taux
+```
 
 
 
