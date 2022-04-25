@@ -1218,3 +1218,12 @@ train.svm.poly$finalModel
 ```{r}
 pred.svm.poly <- predict(train.svm.poly,newdata = test)
 ```
+```{r}
+compar1=ggplot(data.frame(methode=c("regression", "svm (linéaire et radial)", "arbre", "adaboost", "neural network"), value=c(0.985, 0.99, 0.97,0.99, 0.993435442447662) ))+geom_col(aes(x=methode, y=value))+ggtitle("Comaraison des algorithmes \n en ayant pris uniquement les attaquants et les défenseurs")
+compar1
+```
+
+```{r}
+compar2=ggplot(data.frame(methode=c("regression polytomique nominale", "regression polytomique ordonnee", "svm polynomial", "neural network"), value=c(0.77,0.76, 0.87,0.84) ))+geom_col(aes(x=methode, y=value))+ggtitle("Comaraison des algorithmes \n en ayant pris uniquement attaquants milieux et défenseurs")
+compar2
+```
