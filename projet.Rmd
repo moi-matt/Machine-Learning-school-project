@@ -11,7 +11,7 @@ output: html_notebook
 Il y a 4 types de positionnement au football : Gardien de but, défenseur, milieu et attaquant, comme on peut le voir sur l'image ci-dessous
 ![Les positions au football](postes_foot.PNG)
 
-Certains jeunes joueurs peuvent jouer à des postes très différents. Notre objectif est de pouvoir conseiller le poste qui conviendrait le mieux à ces jeunes joueurs en utilisant l'intelligence artificielle.
+Certains jeunes joueurs peuvent jouer à des postes très différents. Notre objectif est de pouvoir conseiller le poste qui conviendrait le mieux à ces jeunes joueurs. Pour cela, nous utiliserons des méthodes de machine learning.
 
 Pour cela, nous avons utilisé le jeu de données de FIFA 21 afin de pouvoir entrainer nos modèles.
 
