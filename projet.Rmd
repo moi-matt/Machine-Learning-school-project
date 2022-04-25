@@ -129,6 +129,50 @@ Ils sont proches des attaquants pour la force et la précision de la tête. En e
 
 Enfin, sur nos données défenseurs et attaquants sont proches en terme d'endurance.
 
+```{r}
+ggplot(players_3)+aes(x=Finishing,y=Position,fill=Position)+geom_boxplot()+theme_classic()
+```
+
+```{r}
+library("ggplot2")
+library("GGally")
+library("ggExtra")
+library("ggalluvial")
+```
+```{r}
+p1 <- ggplot(data = players_3,
+             mapping = aes(x = Crossing, y = Finishing,
+                           colour = Position)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  labs(x = "Crossing", y = "Finishing") +
+  theme_bw() +
+  theme(legend.position = "bottom",
+        legend.title = element_blank())
+
+ggMarginal(p1, type = "density", groupColour = TRUE, groupFill = TRUE)
+```
+
+```{r}
+p2 <- ggplot(data = players_3,
+             mapping = aes(x = Strength, y = Stamina,
+                           colour = Position)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  labs(x = "Strength", y = "Stamina") +
+  theme_bw() +
+  theme(legend.position = "bottom",
+        legend.title = element_blank())
+
+ggMarginal(p2, type = "density", groupColour = TRUE, groupFill = TRUE)
+```
+
+```{r}
+ggcorr(data = players_2[,-1],
+       method = c("pairwise.complete.obs", "pearson"),
+       label = FALSE, label_size = 2,size = 2)
+##zoomer pour etre visible
+```
 
 
 Ainsi, nous avons pu remarquer que les milieux sont proches des attquants sur 7 des 29 caractéristiques et proches des défenseurs sur une des caractéristques. En revanche, mis à part sur 2 caractéristques, attaquants et défenseurs semblent former 2 groupes bien distincts.
