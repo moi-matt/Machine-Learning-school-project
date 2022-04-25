@@ -254,16 +254,26 @@ Nous obtenons le meilleur modèle pour C=1. On visualise maintenant la performan
 plot(train.mod.lin, metric = "Accuracy",xTrans=log10,main = "linear svm with criterion accuracy")
 plot(train.mod.lin, metric = "Kappa",xTrans=log10,main = "linear svm with criterion kappa")
 ```
-On obtient plus de 98% d'accuracy tout comme la régression logistique.
+On obtient plus de 98% d'accuracy pour C=0.On regarde la performance de notre modèle sur les données tests.
+```{r}
+mod.final <- svm(Position~.,data=svm_player_omit,kernel="linear",cost=0.1,decision.values=TRUE,probability=TRUE)
+prob <- predict(mod.final,newdata=test,probability=TRUE,decision.values=TRUE)
+prob1 <- attr(prob,"probabilities")
+```
 
 
 ```{r}
-#mod.svm.rad <- svm(Position~.,data=svm_player,kernel="radial",gamma=1,cost=1)
-#plot(mod.svm.rad,data = svm_player, Crossing~Finishing)
+#test$Position <- as.factor(test$Position)
+prev <- predict(mod.final,newdata=test)
+confusionMatrix(data = prev, reference = test$Position)
 ```
+
+
+
 
 **Remarque**
 Le stoquage de noyau est très couteux, augmenter le nombre de variable revient à augmenter le temps de calcul de manière quadratique.
+
 
 Maintenant, on réalise la classification avec le modèle de svm radial. Son noyau est Gaussien
 ```{r}
@@ -283,39 +293,23 @@ train.mod.rad
 plot(train.mod.rad, metric = "Accuracy",xTrans=log10,main = "radial svm with criterion accuracy")
 plot(train.mod.rad, metric = "Kappa",xTrans=log10,main = "radial svm with criterion kappa")
 ```
+Le meilleur modèle d'entrainement est obenu pour C=- et sigma=-1
+
 ```{r}
+library(e1071)
+
+mod.svm.rad <- svm(Position~.,data=svm_player,kernel="radial",sigma=-1,cost=1)
 test$Position <- as.factor(test$Position)
-pred.rad = predict(train.mod.rad, test)
+pred.rad = predict(mod.svm.rad, test)
 confusionMatrix(pred.rad, reference = test$Position)
 ```
 
-
-```{r}
-#tune.out <- tune(svm,Position~.,data=svm_player,kernel="radial",ranges=list(cost=c(0.1,1,10,100,1000),gamma=c(0.5,1,2,3,4)))
-summary(tune.out)
-```
+Nos 2 modèles ont plus de 99% d'accuracy sur les données test
 
 
-On garde le modèle svm linéaire car ce dernier est plus précis. On garde le modèle linéaire pour vérifier sur nos tests.
-
-```{r}
-tune.out <- tune(svm,Position~.,data=svm_player,kernel="linear",ranges=list(cost=c(0.1,1,10,100,1000)))
-summary(tune.out)
-```
 
 
-```{r}
-test$Position <- as.factor(test$Position)
-test1 = na.omit(test)
-prev <- predict(tune.out$best.model,newdata=test1)
-confusionMatrix(data = prev, reference = test1$Position)
-```
 
-```{r}
-mod.final <- svm(Position~.,data=svm_player_omit,kernel="linear",cost=0.1,decision.values=TRUE,probability=TRUE)
-prob <- predict(mod.final,newdata=test1,probability=TRUE,decision.values=TRUE)
-prob1 <- attr(prob,"probabilities")
-```
 ### I.C Arbre de décision 
 L'arbre de décision consiste à ...
 
@@ -489,15 +483,14 @@ Les modèles avec 2 couches ne sont pas forcément meilleurs. On garde notre mod
 ### I.D Comparaison des modèles avec uniquement la prise en compte des attaquants et des défenseurs.
 
 ```{r}
-compar1=ggplot(data.frame(methode=c("")))
+compar1=ggplot(data.frame(methode=c("regression", "svm (linéaire et radial)", "arbre", "adaboost", "neural network"), value=c(0.985, 0.99, 0.97,0.99, 0.993435442447662) ))+geom_col(aes(x=methode, y=value))+ggtitle("Comaraison des algorithmes \n en ayant pris uniquement les attaquants et les défenseurs")
+compar1
 ```
 
+Pour chaque méthode, on réussi à avoir des accuracy de plus de 98% sur les données test, ce qui paraît logique tant les attaquants et les défenseurs apparaissent comme 2 groupes différents.
 
 
-Pour chaque méthode, on réussi à avoir des accuracy de plus de 98% ce qui paraît logique tant les attaquants et les défenseurs aparaissent comme 2 groupes différents.
-
-
-
+Nous allons maintenant réaliser notre classification en prenant en compte les milieux de terrain afin de mieux représenter notre problème.
 
 ## Prise en compte des milieux de terrain
 
@@ -515,23 +508,14 @@ test_mid = players_3[-tirage,]
 
 x_test_mid = as.matrix(test_mid[,2:length(test_mid[1,])])
 y_test_mid = as.numeric(test_mid[,1])
+
+train_mid
 ```
 
 
 
-## Prise en compte des milieux de terrain
 
-```{r}
-players_3[index_mid, "Position"]=1
-players_3[index_defense, "Position"]=0
-players_3[index_attack, "Position"]=2
-players_3=players_3[c(index_attack,index_defense,index_mid),]
-players_3$Position = as.factor(players_3$Position)
-temp = is.na(apply(players_3[,2:length(colnames(train))],1,sum))
-nRemovedTrain = sum(1*temp)
-players_3 = players_3[!temp,]
-summary(players_3)
-``### II.A Régression logistique
+### II.A Régression logistique
 
 
 ## Prise en compte des milieux de terrain
@@ -565,6 +549,9 @@ library('VGAM')
 
 
 ```{r}
+train2=train_mid
+train2$Position=as.factor(train_mid$Position)
+
 modTest = vglm(Position~.,data = train_mid, family = multinomial)
 summary(modTest)
 ```
@@ -573,9 +560,9 @@ Nous sélectionnons les variables dont au moins une des déclinaisons de modalit
 
 ```{r}
 variablesAGarder = c("Position","Crossing", "Finishing", "Heading.Accuracy", "Short.Passing", "Volleys", "Curve", "Long.Passing", "Sprint.Speed", "Reactions", "Shot.Power", "Jumping", "Aggression", "Interceptions", "Positioning", "Vision", "Penalties", "Composure", "Defensive.Awareness", "Sliding.Tackle")
-train_mid = train_mid[,variablesAGarder]
+train2 = train2[,variablesAGarder]
 test_mid = test_mid[, variablesAGarder]
-modTest = vglm(Position~. ,data = train_mid, family = multinomial)
+modTest = vglm(Position~. ,data = train2, family = multinomial)
 summary(modTest)
 ```
 
@@ -591,7 +578,169 @@ plot(prediction[,1], main="Probabilité pour chaque joueur d'être défenseur")
 plot(prediction[,2], main="Probabilité pour chaque joueur d'être milieu")
 plot(prediction[,3], main="Probabilité pour chaque joueur d'être attaquant")
 ```
+On peut voir que les milieux sont plus difficiles à prédire, en effet, on voit que beaucoup de joueur ont une probabilté d'être milieu proche de 0.
 
+On prédit la catégorie du joueur en prenant le maximum des probabilités pour chaque individu.
+
+```{r}
+prediction_finale = data.frame("n0_joueur" = as.integer(row.names(prediction)), "prediction" = rep(0, length(prediction[,1])))
+for (i in 1:length(prediction[,1])) {
+  prediction_finale[i,2] = as.integer(which.max(prediction[i,]))
+}
+prediction_finale
+```
+
+```{r}
+prediction_finale = cbind(prediction_finale, "reel" = 0)
+```
+
+
+```{r}
+for (i in 1:length(prediction[,1])) {
+  prediction_finale$reel[i] = test$Position[i]
+}
+prediction_finale
+```
+
+Calcul du taux d'erreur :
+
+```{r}
+testEgal <- function(var) {
+  return(as.integer(var[2] == var[3]))
+}
+```
+
+nombre de vrais :
+
+```{r}
+nReussite = apply(prediction_finale, 1, testEgal)
+tauxReussiteVGLM = (sum(nReussite))/length(nReussite)
+tauxReussiteVGLM
+```
+
+
+
+#### Modèle polytomique ordonne :
+
+Un deuxième type de modèle découle de l'observation suivante : défenseur, milieu et attaquant ne sont pas simplement trois modalité : on peut leur attacher une notion d'ordre. En effet, pour simplifier, on peut dire que les milieux sont des joueurs "intermédiaires" entre les attaquants et les défenseurs. On peut donc supposer que cette notion d'ordre pourrait se transmettre aussi aux compétences que le joueurs possèdent. 
+
+Si tel est le cas, il peut être judicieux de considérer la variable réponse comme une variable continue qui vaut 0 si le joueur est un défenseur, 1 s'il est milieu de terrain et 2 s'il est attaquant. On rentre dans ce cas à nouveau dans le cadre d'un modèle logistique, simple, que l'on va ici appliquer avec la fonction glm :
+
+```{r}
+trainOrdonne = train2
+trainOrdonne$Position = (as.double(trainOrdonne$Position)-1)/2
+```
+
+```{r}
+modOrdonne = glm(Position~. ,data = trainOrdonne, family = 'binomial')
+summary(modOrdonne)
+```
+
+```{r}
+pred = as.factor(round(predict.glm(modOrdonne, newdata = test_mid, type = 'response')*2))
+verif = as.integer(pred == test_mid$Position)
+taux = sum(verif)/length(verif)
+taux
+```
+
+
+### SVM
+
+```{r}
+library(e1071)
+```
+
+```{r}
+model <- svm(Position~.,data=train,kernel="radial",gamma=1,cost=1)
+```
+
+```{r}
+tune.3positions.lin <- tune(svm,Position~.,data=train_mid,kernel="linear",ranges=list(cost=c(0.01,0.1,1,10,100,1000)))
+summary(tune.3positions.lin)
+```
+
+```{r}
+tune.3positions.rad <- tune(svm,Position~.,data=train,kernel="radial",ranges=list(cost=c(0.1,1,10,100,1000),gamma=c(0.5,1,2,3,4)))
+summary(tune.3positions.rad)
+```
+
+```{r}
+prev <- predict(tune.3positions.rad$best.model,newdata=test)
+confusionMatrix(data = prev, reference = test$Position)
+```
+
+```{r}
+final.model <- svm(Position~.,data=train,kernel="radial",gamma=0.5,cost=10,decision.values=TRUE,probability=TRUE)
+prob <- predict(final.model,newdata=test,probability=TRUE,decision.values=TRUE)
+prob1 <- attr(prob,"probabilities")
+```
+
+
+
+```{r}
+gr.svm.poly = expand.grid(C=c(0.0001,0.001,0.01,0.1,1), degree=c(2,3,4,5), scale=c(1))
+train.svm.poly = train(Position~., 
+                     data = train, 
+                     method = "svmPoly", 
+                     trControl = ctrl, 
+                     tuneGrid = gr.svm.poly)
+```
+
+```{r}
+train.svm.poly
+```
+
+
+```{r}
+plot(train.svm.poly, metric = "Accuracy", xTrans = log10, xlab = "log10 Cp", main = "Polynomial svm (Accuracy criterion)")
+plot(train.svm.poly, metric = "Kappa", xTrans = log10, xlab = "log10 Cp", main = "Polynomial svm (Kappa criterion)")
+```
+
+```{r}
+train.svm.poly$finalModel
+```
+
+
+```{r}
+pred.svm.poly <- predict(train.svm.poly,newdata = test)
+```
+
+```{r}
+library(e1071)
+```
+
+```{r}
+gr.svm.poly = expand.grid(C=c(0.0001,0.001,0.01,0.1,1), degree=c(2,3,4,5), scale=c(1))
+train.svm.poly = train(Position~., 
+                     data = train_mid, 
+                     method = "svmPoly", 
+                     trControl = ctrl, 
+                     tuneGrid = gr.svm.poly)
+```
+
+```{r}
+train.svm.poly
+```
+
+
+```{r}
+plot(train.svm.poly, metric = "Accuracy", xTrans = log10, xlab = "log10 Cp", main = "Polynomial svm (Accuracy criterion)")
+plot(train.svm.poly, metric = "Kappa", xTrans = log10, xlab = "log10 Cp", main = "Polynomial svm (Kappa criterion)")
+```
+
+```{r}
+train.svm.poly$finalModel
+```
+
+
+```{r}
+pred.svm.poly <- predict(train.svm.poly,newdata = test_mid)
+
+```
+
+Parmi les 3 noyaux testés, on obtient de bien meilleurs résultats avec le svm polynomial. On conserve donc le modèle polynomial.
+
+### II.C Réseaux de neurones
 
 ```{r}
 single1_mid = compile_fit(single_perceptron, "relu", x=x_train_mid, y=y_train_mid, loss="sparse_categorical_crossentropy",epochs=30,final_units=3)
@@ -638,6 +787,10 @@ three_mid3 = compile_fit(three_layers, "relu", x=x_train_mid, y=y_train_mid, los
 three_mid3[[1]] %>% evaluate(x_test_mid,y_test_mid)
 plot(three_mid3[[2]])
 ```
+Les modèles de une 
+
+
+
 ```{r}
 model = keras_model_sequential() 
 model %>% layer_dense(units=50, activation="sigmoid", input_shape=length(x_train[1,])) 
@@ -987,130 +1140,15 @@ y_test= test[,1]
 str(players_3)
 ```
 
-### SVM
-
-```{r}
-library(e1071)
-```
-
-```{r}
-#model <- svm(Position~.,data=train,kernel="radial",gamma=1,cost=1)
-```
-
-```{r}
-#tune.3positions.lin <- tune(svm,Position~.,data=train,kernel="linear",ranges=list(cost=c(0.01,0.1,1,10,100,1000)))
-#summary(tune.3positions.lin)
-```
-
-```{r}
-#tune.3positions.rad <- tune(svm,Position~.,data=train,kernel="radial",ranges=list(cost=c(0.1,1,10,100,1000),gamma=c(0.5,1,2,3,4)))
-#summary(tune.3positions.rad)
-```
-
-```{r}
-#prev <- predict(tune.3positions.rad$best.model,newdata=test)
-#confusionMatrix(data = prev, reference = test$Position)
-```
-
-```{r}
-#final.model <- svm(Position~.,data=train,kernel="radial",gamma=0.5,cost=10,decision.values=TRUE,probability=TRUE)
-#prob <- predict(final.model,newdata=test,probability=TRUE,decision.values=TRUE)
-#prob1 <- attr(prob,"probabilities")
-```
-
-```{r}
-gr.svm.poly = expand.grid(C=c(0.0001,0.001,0.01,0.1,1), degree=c(2,3,4,5), scale=c(1))
-train.svm.poly = train(Position~., 
-                     data = train, 
-                     method = "svmPoly", 
-                     trControl = ctrl, 
-                     tuneGrid = gr.svm.poly)
-```
-
-```{r}
-train.svm.poly
-```
 
 
-```{r}
-plot(train.svm.poly, metric = "Accuracy", xTrans = log10, xlab = "log10 Cp", main = "Polynomial svm (Accuracy criterion)")
-plot(train.svm.poly, metric = "Kappa", xTrans = log10, xlab = "log10 Cp", main = "Polynomial svm (Kappa criterion)")
-```
-
-```{r}
-train.svm.poly$finalModel
-```
-
-
-```{r}
-pred.svm.poly <- predict(train.svm.poly,newdata = test)
-```
-
-
-### SVM
-
-```{r}
-library(e1071)
-```
-
-```{r}
-#model <- svm(Position~.,data=train,kernel="radial",gamma=1,cost=1)
-```
-
-```{r}
-#tune.3positions.lin <- tune(svm,Position~.,data=train,kernel="linear",ranges=list(cost=c(0.01,0.1,1,10,100,1000)))
-#summary(tune.3positions.lin)
-```
-
-```{r}
-#tune.3positions.rad <- tune(svm,Position~.,data=train,kernel="radial",ranges=list(cost=c(0.1,1,10,100,1000),gamma=c(0.5,1,2,3,4)))
-#summary(tune.3positions.rad)
-```
-
-```{r}
-#prev <- predict(tune.3positions.rad$best.model,newdata=test)
-#confusionMatrix(data = prev, reference = test$Position)
-```
-
-```{r}
-#final.model <- svm(Position~.,data=train,kernel="radial",gamma=0.5,cost=10,decision.values=TRUE,probability=TRUE)
-#prob <- predict(final.model,newdata=test,probability=TRUE,decision.values=TRUE)
-#prob1 <- attr(prob,"probabilities")
-```
-
-```{r}
-gr.svm.poly = expand.grid(C=c(0.0001,0.001,0.01,0.1,1), degree=c(2,3,4,5), scale=c(1))
-train.svm.poly = train(Position~., 
-                     data = train, 
-                     method = "svmPoly", 
-                     trControl = ctrl, 
-                     tuneGrid = gr.svm.poly)
-```
-
-```{r}
-train.svm.poly
-```
-
-
-```{r}
-plot(train.svm.poly, metric = "Accuracy", xTrans = log10, xlab = "log10 Cp", main = "Polynomial svm (Accuracy criterion)")
-plot(train.svm.poly, metric = "Kappa", xTrans = log10, xlab = "log10 Cp", main = "Polynomial svm (Kappa criterion)")
-```
-
-```{r}
-train.svm.poly$finalModel
-```
-
-
-```{r}
-pred.svm.poly <- predict(train.svm.poly,newdata = test)
-```
-```{r}
-compar1=ggplot(data.frame(methode=c("regression", "svm (linéaire et radial)", "arbre", "adaboost", "neural network"), value=c(0.985, 0.99, 0.97,0.99, 0.993435442447662) ))+geom_col(aes(x=methode, y=value))+ggtitle("Comaraison des algorithmes \n en ayant pris uniquement les attaquants et les défenseurs")
-compar1
-```
 
 ```{r}
 compar2=ggplot(data.frame(methode=c("regression polytomique nominale", "regression polytomique ordonnee", "svm polynomial", "neural network"), value=c(0.77,0.76, 0.87,0.84) ))+geom_col(aes(x=methode, y=value))+ggtitle("Comaraison des algorithmes \n en ayant pris uniquement attaquants milieux et défenseurs")
 compar2
 ```
+## Conclusion 
+
+Nous avons pu 
+
+
