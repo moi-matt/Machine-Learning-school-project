@@ -107,6 +107,8 @@ summary(modeleRegLog)
 modeleRegLogCorr = step(modeleRegLog, direction = "both", k = log(n))
 ```
 
+
+
 ```{r}
 summary(modeleRegLogCorr)
 residus = modeleRegLogCorr$residuals
@@ -124,6 +126,19 @@ tauxErreur = resultsTest[1]/(sum(resultsTest))*100
 resultsTest
 tauxErreur
 ```
+
+Construction de la courbe ROC :
+
+```{r}
+library(pROC)
+```
+
+
+```{r}
+plot(roc(test2$Position, predict.glm(modeleRegLogCorr, newdata = test2)), main = 'Courbe ROC')
+```
+
+
 
 ## Prise en compte des milieux de terrain
 
@@ -283,6 +298,20 @@ verif = as.integer(pred == test$Position)
 taux = sum(verif)/length(verif)
 taux
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
